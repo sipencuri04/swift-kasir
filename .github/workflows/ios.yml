@@ -25,6 +25,12 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Install @capacitor/ios if missing
+        run: |
+          if ! grep -q '"@capacitor/ios"' package.json; then
+            npm install @capacitor/ios@latest --legacy-peer-deps
+          fi
+
       - name: Build web application
         run: npm run build
 
@@ -37,34 +43,43 @@ jobs:
       - name: Sync web assets to iOS
         run: npx cap sync ios
 
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
       - name: Install CocoaPods
         run: |
+          sudo gem install cocoapods
           cd ios/App
-          pod install
+          pod install --repo-update
 
       - name: Build Xcode project (Archive)
         run: |
-          xcodebuild -workspace ios/App/App.xcworkspace \
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
             -archivePath $PWD/build/App.xcarchive \
             archive \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            PROVISIONING_PROFILE=""
 
       - name: Export IPA (Unsigned Payload)
         run: |
-          mkdir -p build/ipa
-          # Copy the .app payload
-          cp -r build/App.xcarchive/Products/Applications/App.app build/ipa/SwiftKasir.app
+          mkdir -p build/ipa/Payload
+          APP_PATH=$(find build/App.xcarchive/Products/Applications -name "*.app" | head -1)
+          cp -r "$APP_PATH" build/ipa/Payload/
           cd build/ipa
-          mkdir Payload
-          cp -r SwiftKasir.app Payload/
           zip -r SwiftKasir.ipa Payload
-          rm -rf Payload SwiftKasir.app
+          rm -rf Payload
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: SwiftKasir-iOS-Unsigned
           path: build/ipa/SwiftKasir.ipa
+          retention-days: 7
