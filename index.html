@@ -26,14 +26,24 @@
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <!-- Disable Pinch-to-Zoom (Native APK behavior) -->
     <style>
-      html, body {
+      html {
+        touch-action: pan-x pan-y;
+        overflow: hidden;
+      }
+      body {
         touch-action: pan-x pan-y;
         -ms-touch-action: pan-x pan-y;
-        -webkit-user-scalable: none;
-        user-scalable: none;
+        overflow: hidden;
       }
+      /* Semua elemen: larang pinch gesture */
       * {
         -webkit-tap-highlight-color: transparent;
+        touch-action: pan-x pan-y;
+      }
+      /* Elemen scrollable boleh scroll vertikal saja */
+      .page-container, .cart-sheet, .pos-products, .pos-sidebar,
+      [style*="overflow"], [class*="scroll"] {
+        touch-action: pan-y;
       }
     </style>
   </head>
@@ -52,35 +62,61 @@
         });
       }
 
-      // Disable pinch-to-zoom gesture (fallback for browsers ignoring meta tag)
-      document.addEventListener('gesturestart', function(e) {
-        e.preventDefault();
-      }, { passive: false });
+      // ============================================================
+      // ANTI PINCH-TO-ZOOM — Chrome Android ignores user-scalable=no
+      // ============================================================
 
-      document.addEventListener('gesturechange', function(e) {
-        e.preventDefault();
-      }, { passive: false });
+      // 1. Safari iOS: gesture events
+      document.addEventListener('gesturestart',  function(e){ e.preventDefault(); }, { passive: false, capture: true });
+      document.addEventListener('gesturechange', function(e){ e.preventDefault(); }, { passive: false, capture: true });
+      document.addEventListener('gestureend',    function(e){ e.preventDefault(); }, { passive: false, capture: true });
 
-      document.addEventListener('gestureend', function(e) {
-        e.preventDefault();
-      }, { passive: false });
-
-      // Prevent pinch zoom via touchmove with multiple touches
-      let lastTouchEnd = 0;
-      document.addEventListener('touchmove', function(e) {
+      // 2. Semua browser: blokir touchmove 2+ jari di capture phase
+      //    (capture: true agar tidak bisa di-cancel oleh React)
+      window.addEventListener('touchmove', function(e) {
         if (e.touches.length > 1) {
           e.preventDefault();
         }
-      }, { passive: false });
+      }, { passive: false, capture: true });
 
-      // Prevent double-tap zoom
+      // 3. Blokir touchstart 2+ jari juga
+      window.addEventListener('touchstart', function(e) {
+        if (e.touches.length > 1) {
+          e.preventDefault();
+        }
+      }, { passive: false, capture: true });
+
+      // 4. Prevent double-tap zoom
+      var lastTouchEnd = 0;
       document.addEventListener('touchend', function(e) {
-        const now = Date.now();
+        var now = Date.now();
         if (now - lastTouchEnd <= 300) {
           e.preventDefault();
         }
         lastTouchEnd = now;
-      }, { passive: false });
+      }, { passive: false, capture: true });
+
+      // 5. Blokir Ctrl+Wheel (zoom di desktop/PWA window)
+      window.addEventListener('wheel', function(e) {
+        if (e.ctrlKey) {
+          e.preventDefault();
+        }
+      }, { passive: false, capture: true });
+
+      // 6. Visual Viewport API — paksa reset scale jika terlanjur zoom
+      //    Chrome kadang masih lolos, ini jaring pengaman terakhir
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', function() {
+          var scale = window.visualViewport.scale;
+          if (scale !== 1) {
+            // Reset meta viewport untuk paksa scale = 1
+            var mv = document.querySelector('meta[name="viewport"]');
+            if (mv) {
+              mv.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover';
+            }
+          }
+        });
+      }
     </script>
   </body>
 </html>
