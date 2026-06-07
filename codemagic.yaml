@@ -12,9 +12,10 @@ workflows:
         - push
       branch_patterns:
         - pattern: main
-          value: true
+          include: true
         - pattern: master
-          value: true
+          include: true
+
     scripts:
       - name: Install Node modules
         script: npm install
