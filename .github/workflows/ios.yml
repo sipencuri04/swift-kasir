@@ -1,0 +1,70 @@
+name: Build iOS App
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build iOS IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web application
+        run: npm run build
+
+      - name: Add iOS platform if not exists
+        run: |
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          fi
+
+      - name: Sync web assets to iOS
+        run: npx cap sync ios
+
+      - name: Install CocoaPods
+        run: |
+          cd ios/App
+          pod install
+
+      - name: Build Xcode project (Archive)
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $PWD/build/App.xcarchive \
+            archive \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export IPA (Unsigned Payload)
+        run: |
+          mkdir -p build/ipa
+          # Copy the .app payload
+          cp -r build/App.xcarchive/Products/Applications/App.app build/ipa/SwiftKasir.app
+          cd build/ipa
+          mkdir Payload
+          cp -r SwiftKasir.app Payload/
+          zip -r SwiftKasir.ipa Payload
+          rm -rf Payload SwiftKasir.app
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwiftKasir-iOS-Unsigned
+          path: build/ipa/SwiftKasir.ipa
