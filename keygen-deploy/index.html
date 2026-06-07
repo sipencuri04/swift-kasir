@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Swift Kasir Key Generator - Generate activation keys untuk aplikasi Swift Kasir">
+    <title>Swift Kasir Key Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 16px;
+        }
+
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: 'Inter', monospace;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .result {
+            margin-top: 28px;
+            padding: 28px;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            border: 2px solid #86efac;
+            border-radius: 16px;
+            display: none;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .key-section {
+            margin-bottom: 24px;
+        }
+
+        .key-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #15803d;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .key-value {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            font-weight: bold;
+            color: #166534;
+            margin-bottom: 12px;
+            word-break: break-all;
+            padding: 16px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #86efac;
+            position: relative;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #15803d;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            background: #166534;
+        }
+
+        .emergency-box {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            border: 2px solid #fca5a5;
+            border-radius: 12px;
+        }
+
+        .emergency-header {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #b91c1c;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .cred-box {
+            background: white;
+            padding: 16px;
+            border-radius: 10px;
+            border: 1px solid #fca5a5;
+        }
+
+        .cred-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .cred-row:last-of-type {
+            margin-bottom: 0;
+        }
+
+        .cred-label {
+            color: #991b1b;
+            font-weight: 600;
+        }
+
+        .cred-val {
+            font-weight: bold;
+            color: #7f1d1d;
+            background: #fee2e2;
+            padding: 6px 12px;
+            border-radius: 6px;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #991b1b;
+            margin-top: 12px;
+            line-height: 1.6;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 3px solid #dc2626;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            color: white;
+            font-size: 14px;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .footer a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.5);
+            transition: border-color 0.3s;
+        }
+
+        .footer a:hover {
+            border-bottom-color: white;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                max-height: 0;
+            }
+
+            to {
+                opacity: 1;
+                max-height: 500px;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 640px) {
+            body {
+                padding: 16px;
+            }
+
+            .card {
+                padding: 24px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .key-value {
+                font-size: 18px;
+                padding: 12px;
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #15803d;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            display: none;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🔑 Swift Kasir KeyGen</h1>
+            <p>Generate Kode Aktivasi & Akun Darurat</p>
+        </div>
+
+        <div class="card">
+            <div class="form-group">
+                <label for="deviceId">Device ID Customer</label>
+                <input type="text" id="deviceId" placeholder="Contoh: UNKNOWN_DEVICE atau ABCD-1234"
+                    oninput="this.value = this.value.toUpperCase()">
+            </div>
+
+            <button onclick="generate()">🚀 Generate Key</button>
+
+            <div class="result" id="resultArea">
+                <div class="key-section">
+                    <div class="key-label">🎯 KODE AKTIVASI UTAMA</div>
+                    <div class="key-value" id="outputKey">
+                        XXXX-XXXX-XXXX-XXXX
+                        <button class="copy-btn" onclick="copyKey()">📋 Copy</button>
+                    </div>
+                </div>
+
+                <div class="emergency-box">
+                    <div class="emergency-header">🆘 AKUN LOGIN DARURAT (RANDOM)</div>
+                    <div class="cred-box">
+                        <div class="cred-row">
+                            <span class="cred-label">Username:</span>
+                            <span class="cred-val" id="emerUser">ADMIN-XXXX</span>
+                        </div>
+                        <div class="cred-row">
+                            <span class="cred-label">Password:</span>
+                            <span class="cred-val" id="emerPass">YYYYZZZZ</span>
+                        </div>
+                    </div>
+                    <div class="info-text">
+                        <strong>⚠️ Penting:</strong> Gunakan akun ini jika database kosong atau lupa password.
+                        Saat login dengan akun darurat, akun 'owner' akan direset otomatis.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            Powered by <strong>Swift Kasir</strong> © 2025
+        </div>
+    </div>
+
+    <div class="toast" id="toast">✅ Berhasil disalin!</div>
+
+    <script>
+        const SALT = 'SWIFT_KASIR_SECURE_V1_2025';
+
+        async function generate() {
+            const deviceId = document.getElementById('deviceId').value.trim();
+            if (!deviceId) {
+                alert('⚠️ Masukkan Device ID terlebih dahulu!');
+                return;
+            }
+
+            const text = deviceId + SALT;
+            const msgBuffer = new TextEncoder().encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+
+            // Expected Key Logic: First 16 chars formatted
+            const raw = hashHex.substring(0, 16);
+            const formatted = raw.match(/.{1,4}/g).join('-'); // ABCD-EFGH-IJKL-MNOP
+
+            // Emergency Account Logic: Consistent with App
+            const parts = formatted.split('-');
+            const magicUser = `ADMIN-${parts[0]}`;
+            const magicPass = `${parts[1]}${parts[2]}`;
+
+            document.getElementById('outputKey').innerHTML = `
+                ${formatted}
+                <button class="copy-btn" onclick="copyKey()">📋 Copy</button>
+            `;
+            document.getElementById('emerUser').innerText = magicUser;
+            document.getElementById('emerPass').innerText = magicPass;
+
+            document.getElementById('resultArea').style.display = 'block';
+        }
+
+        function copyKey() {
+            const keyText = document.getElementById('outputKey').innerText.replace('📋 Copy', '').trim();
+            navigator.clipboard.writeText(keyText).then(() => {
+                showToast();
+            });
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 2000);
+        }
+
+        // Allow Enter key to generate
+        document.getElementById('deviceId').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                generate();
+            }
+        });
+    </script>
+
+</body>
+
+</html>

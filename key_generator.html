@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swift Kasir Key Generator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            padding: 40px;
+            background: #f0f9ff;
+            display: flex;
+            justify-content: center;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            margin-top: 0;
+            color: #0284c7;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #334155;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            background: #f8fafc;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #0284c7;
+            background: white;
+        }
+
+        button {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #0369a1;
+        }
+
+        .result {
+            margin-top: 24px;
+            padding: 24px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            display: none;
+        }
+
+        .key-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #15803d;
+            margin-bottom: 4px;
+            font-weight: 700;
+        }
+
+        .key-value {
+            font-family: monospace;
+            font-size: 20px;
+            font-weight: bold;
+            color: #166534;
+            margin-bottom: 16px;
+            word-break: break-all;
+        }
+
+        .emergency-box {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px dashed #86efac;
+        }
+
+        .cred-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .cred-label {
+            color: #15803d;
+        }
+
+        .cred-val {
+            font-weight: bold;
+            color: #14532d;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="card">
+        <h1>Swift Kasir KeyGen</h1>
+        <p style="color: #64748b; margin-bottom: 24px; font-size: 14px;">
+            Masukkan Device ID dari aplikasi customer untuk membuat kode aktivasi dan akun darurat.
+        </p>
+
+        <label>Device ID Customer</label>
+        <input type="text" id="deviceId" placeholder="Contoh: UNKNOWN_DEVICE atau ABCD-1234"
+            oninput="this.value = this.value.toUpperCase()">
+
+        <button onclick="generate()">Generate Key</button>
+
+        <div class="result" id="resultArea">
+            <div class="key-label">KODE AKTIVASI UTAMA</div>
+            <div class="key-value" id="outputKey">XXXX-XXXX-XXXX-XXXX</div>
+
+            <div class="emergency-box">
+                <div class="key-label" style="color:#b91c1c; margin-bottom:8px;">AKUN LOGIN DARURAT (RANDOM)</div>
+                <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #fca5a5;">
+                    <div class="cred-row">
+                        <span class="cred-label">Username:</span>
+                        <span class="cred-val" id="emerUser">ADMIN-XXXX</span>
+                    </div>
+                    <div class="cred-row" style="margin-bottom:0">
+                        <span class="cred-label">Password:</span>
+                        <span class="cred-val" id="emerPass">YYYYZZZZ</span>
+                    </div>
+                </div>
+                <div style="font-size: 11px; color: #991b1b; margin-top:8px; line-height: 1.4;">
+                    Gunakan akun ini jika database kosong atau kelupaan password. Saat login, akun 'owner' akan direset.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SALT = 'SWIFT_KASIR_SECURE_V1_2025';
+
+        async function generate() {
+            const deviceId = document.getElementById('deviceId').value.trim();
+            if (!deviceId) return alert('Masukkan Device ID!');
+
+            const text = deviceId + SALT;
+            const msgBuffer = new TextEncoder().encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+
+            // Expected Key Logic: First 16 chars formatted
+            const raw = hashHex.substring(0, 16);
+            const formatted = raw.match(/.{1,4}/g).join('-'); // ABCD-EFGH-IJKL-MNOP
+
+            // Logic Emergency Account: Consistent with App Logic
+            // User: ADMIN-{Block1}
+            // Pass: {Block2}{Block3}
+            const parts = formatted.split('-');
+            const magicUser = `ADMIN-${parts[0]}`;
+            const magicPass = `${parts[1]}${parts[2]}`;
+
+            document.getElementById('outputKey').innerText = formatted;
+            document.getElementById('emerUser').innerText = magicUser;
+            document.getElementById('emerPass').innerText = magicPass;
+
+            document.getElementById('resultArea').style.display = 'block';
+        }
+    </script>
+
+</body>
+
+</html>
