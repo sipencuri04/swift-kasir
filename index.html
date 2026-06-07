@@ -2,7 +2,7 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Swift Kasir</title>
 
     <!-- PWA Manifest -->
@@ -24,6 +24,18 @@
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+    <!-- Disable Pinch-to-Zoom (Native APK behavior) -->
+    <style>
+      html, body {
+        touch-action: pan-x pan-y;
+        -ms-touch-action: pan-x pan-y;
+        -webkit-user-scalable: none;
+        user-scalable: none;
+      }
+      * {
+        -webkit-tap-highlight-color: transparent;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
@@ -39,6 +51,36 @@
             .catch((err) => console.log('SW error:', err));
         });
       }
+
+      // Disable pinch-to-zoom gesture (fallback for browsers ignoring meta tag)
+      document.addEventListener('gesturestart', function(e) {
+        e.preventDefault();
+      }, { passive: false });
+
+      document.addEventListener('gesturechange', function(e) {
+        e.preventDefault();
+      }, { passive: false });
+
+      document.addEventListener('gestureend', function(e) {
+        e.preventDefault();
+      }, { passive: false });
+
+      // Prevent pinch zoom via touchmove with multiple touches
+      let lastTouchEnd = 0;
+      document.addEventListener('touchmove', function(e) {
+        if (e.touches.length > 1) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+
+      // Prevent double-tap zoom
+      document.addEventListener('touchend', function(e) {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, { passive: false });
     </script>
   </body>
 </html>
