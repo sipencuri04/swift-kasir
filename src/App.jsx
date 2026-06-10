@@ -42,6 +42,8 @@ function AppContent() {
   useEffect(() => {
     const init = async () => {
       await dbService.init();
+      // Sync harga modal semua produk dari resep setiap kali app dibuka
+      await dbService.syncAllProductsBuyPrice();
       const activated = await licenseService.isActivated();
       if (activated) {
         await syncService.init();
