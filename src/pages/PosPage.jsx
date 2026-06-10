@@ -48,6 +48,13 @@ const PosPage = () => {
 
     useEffect(() => { loadProducts(); }, []);
 
+    // Auto-refresh stok saat window kembali fokus (misal setelah beli bahan)
+    useEffect(() => {
+        const onFocus = () => loadProducts();
+        window.addEventListener('focus', onFocus);
+        return () => window.removeEventListener('focus', onFocus);
+    }, []);
+
     useEffect(() => {
         localStorage.setItem('pos_showNumpad', JSON.stringify(showNumpad));
     }, [showNumpad]);
@@ -66,7 +73,14 @@ const PosPage = () => {
                     return (ing.stock || 0) / r.quantity;
                 });
                 const effectiveStock = Math.floor(Math.min(...limits));
-                return { ...p, stock: effectiveStock, isFB: true };
+                // Tentukan bahan mana yang menjadi bottleneck
+                const bottleneck = productRecipes.reduce((min, r) => {
+                    const ing = ingredients.find(i => i.id === r.ingredientId);
+                    if (!ing) return min;
+                    const portions = (ing.stock || 0) / r.quantity;
+                    return portions < (min.portions ?? Infinity) ? { ing, portions, r } : min;
+                }, {});
+                return { ...p, stock: effectiveStock, isFB: true, bottleneck };
             }
             return { ...p, isFB: false };
         });
@@ -495,6 +509,11 @@ const PosPage = () => {
                                 <input placeholder="Cari barang atau scan barcode..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={handleKeyDown} />
                                 {search && <X size={16} color="var(--text-muted)" onClick={() => setSearch('')} style={{ cursor: 'pointer' }} />}
                             </div>
+                            <button
+                                onClick={loadProducts}
+                                title="Refresh stok"
+                                style={{ background: 'var(--card-bg)', border: '1px solid var(--border-color)', borderRadius: 12, padding: '0 14px', height: 44, cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18, boxShadow: 'var(--shadow)', flexShrink: 0 }}
+                            >⟳</button>
                         </div>
                         <div className="pos-camera-btn">
                             <CameraScanner onScan={handleBarcodeScan} />
@@ -528,7 +547,13 @@ const PosPage = () => {
                                     <div className="info">
                                         <div className="name" style={{ color: isOutOfStock ? 'var(--text-muted)' : 'var(--text-main)' }}>{p.name}</div>
                                         <div className="price" style={{ color: isOutOfStock ? 'var(--text-muted)' : 'var(--primary)' }}>Rp {p.price.toLocaleString('id-ID')}</div>
-                                        <div className="stock-badge">Stok: {p.stock}</div>
+                                        {p.isFB ? (
+                                            <div className="stock-badge" title={p.bottleneck?.ing ? `Dibatasi oleh: ${p.bottleneck.ing.name} (sisa ${p.bottleneck.ing.stock} ${p.bottleneck.ing.unit})` : ''}>
+                                                🍳 {p.stock} porsi
+                                            </div>
+                                        ) : (
+                                            <div className="stock-badge">Stok: {p.stock}</div>
+                                        )}
                                     </div>
 
                                 </div>
