@@ -50,6 +50,8 @@ const ProductsPage = () => {
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const [productRecipes, setProductRecipes] = useState([]);
+
     useEffect(() => {
         if (activeTab === 'products' || activeTab === null) {
             loadProducts();
@@ -58,8 +60,12 @@ const ProductsPage = () => {
     }, [activeTab]);
 
     const loadProducts = async () => {
+        // Sync harga modal dari resep sebelum load daftar produk
+        await dbService.syncAllProductsBuyPrice();
         const data = await dbService.getProducts();
+        const rec = await dbService.getRecipes();
         setProducts(data);
+        setProductRecipes(rec || []);
     };
 
     const loadMasterData = async () => {
@@ -79,19 +85,24 @@ const ProductsPage = () => {
         }
     };
 
-    const handleEdit = (product) => {
+    const handleEdit = async (product) => {
+        // Sync harga modal dari resep agar nilai selalu fresh
+        await dbService.syncAllProductsBuyPrice();
+        const freshProducts = await dbService.getProducts();
+        const fresh = freshProducts.find(p => p.id === product.id) || product;
+
         setFormData({
-            name: product.name,
-            price: product.price,
-            buyPrice: product.buyPrice,
-            stock: product.stock,
-            supplierId: product.supplierId || '',
-            brandId: product.brandId || '',
-            categoryId: product.categoryId || '',
-            barcode: product.barcode || '',
-            image: product.image || null
+            name: fresh.name,
+            price: fresh.price,
+            buyPrice: fresh.buyPrice,
+            stock: fresh.stock,
+            supplierId: fresh.supplierId || '',
+            brandId: fresh.brandId || '',
+            categoryId: fresh.categoryId || '',
+            barcode: fresh.barcode || '',
+            image: fresh.image || null
         });
-        setEditingId(product.id);
+        setEditingId(fresh.id);
         setShowForm(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -305,8 +316,20 @@ const ProductsPage = () => {
                                 </div>
                                 <div className="grid-2">
                                     <div className="input-group">
-                                        <label>Harga Beli</label>
-                                        <input type="number" value={formData.buyPrice} onChange={e => setFormData({ ...formData, buyPrice: e.target.value })} placeholder="0" />
+                                        <label>
+                                            Harga Beli
+                                            {editingId && productRecipes.some(r => r.productId === editingId) && (
+                                                <span style={{ fontSize: 10, color: 'var(--success-text)', marginLeft: 8, fontWeight: 700 }}>✅ Auto dari Resep</span>
+                                            )}
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={formData.buyPrice}
+                                            onChange={e => setFormData({ ...formData, buyPrice: e.target.value })}
+                                            placeholder="0"
+                                            readOnly={editingId && productRecipes.some(r => r.productId === editingId)}
+                                            style={editingId && productRecipes.some(r => r.productId === editingId) ? { background: 'var(--success-bg)', color: 'var(--success-text)', fontWeight: 700 } : {}}
+                                        />
                                     </div>
                                     <div className="input-group">
                                         <label>Harga Jual</label>
