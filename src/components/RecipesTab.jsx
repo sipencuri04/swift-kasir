@@ -22,6 +22,9 @@ const RecipesTab = () => {
     }, []);
 
     const loadData = async () => {
+        // Sinkronkan harga modal semua produk dari resep sebelum load tampilan
+        await dbService.syncAllProductsBuyPrice();
+
         const p = await dbService.getProducts();
         const ing = await dbService.getIngredients();
         const rec = await dbService.getRecipes();
@@ -205,7 +208,7 @@ const RecipesTab = () => {
 
         try {
             await dbService.updateRecipe(selectedProduct.id, dbRecipeItems);
-            AlertService.success('Berhasil', 'Resep produk berhasil disimpan.');
+            AlertService.success('Berhasil', `Resep disimpan! Harga Modal otomatis diperbarui menjadi Rp ${currentRawCost.toLocaleString('id-ID')}.`);
             setIsEditing(false);
             loadData();
         } catch (e) {
@@ -421,16 +424,20 @@ const RecipesTab = () => {
                             </div>
 
                             {/* Cost Breakdown Info */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, background: 'var(--bg-color)', padding: 12, borderRadius: 12, marginBottom: 20 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, background: 'var(--bg-color)', padding: 12, borderRadius: 12, marginBottom: 20 }}>
                                 <div style={{ textAlign: 'center' }}>
                                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>HARGA JUAL</div>
                                     <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--text-main)' }}>Rp {selectedProduct.price.toLocaleString()}</div>
                                 </div>
-                                <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }}>
+                                <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-color)' }}>
                                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>BIAYA BAHAN</div>
                                     <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--primary)' }}>Rp {currentRawCost.toLocaleString('id-ID')}</div>
                                 </div>
-                                <div style={{ textAlign: 'center' }}>
+                                <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-color)' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>HARGA MODAL ✅</div>
+                                    <div style={{ fontSize: 15, fontWeight: 900, color: 'var(--success)' }}>Rp {(selectedProduct.buyPrice || 0).toLocaleString('id-ID')}</div>
+                                </div>
+                                <div style={{ textAlign: 'center', borderLeft: '1px solid var(--border-color)' }}>
                                     <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 4 }}>MARGIN LABA</div>
                                     <div style={{ fontSize: 15, fontWeight: 900, color: currentMargin >= 30 ? 'var(--success)' : 'var(--warning-text)' }}>
                                         {currentMargin}%

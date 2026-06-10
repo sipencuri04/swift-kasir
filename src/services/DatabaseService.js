@@ -449,6 +449,13 @@ class DatabaseService {
             localStorage.setItem(DB_PREFIX + 'products', JSON.stringify(products));
             localStorage.setItem(DB_PREFIX + 'ingredients', JSON.stringify(ingredients));
         }
+
+        // Sync buyPrice otomatis untuk semua produk yang punya resep menggunakan bahan yang diupdate
+        const updatedIngredientIds = items.filter(i => i.isIngredient).map(i => i.id);
+        if (updatedIngredientIds.length > 0) {
+            await this._syncAllRecipeBuyPrices(updatedIngredientIds);
+        }
+
         const itemsJson = JSON.stringify(items);
         if (this.platform !== 'web' && this.db) {
             await this.db.run(`INSERT INTO purchases (id, supplierId, date, total, items) VALUES (?,?,?,?,?)`, [id, supplierId, new Date().toISOString(), totalCost, itemsJson]);
@@ -458,6 +465,68 @@ class DatabaseService {
             localStorage.setItem(DB_PREFIX + 'purchases', JSON.stringify(list));
         }
         return id;
+    }
+
+    /**
+     * Sync ulang buyPrice semua produk yang menggunakan bahan (ingredientIds) tertentu di resepnya.
+     * Dipanggil setelah update harga bahan baku agar harga modal produk tetap akurat.
+     */
+    async _syncAllRecipeBuyPrices(changedIngredientIds = []) {
+        const allRecipes = await this.getRecipes();
+        const ingredients = await this.getIngredients();
+
+        // Kumpulkan productId unik yang terdampak
+        const affectedProductIds = [...new Set(
+            allRecipes
+                .filter(r => changedIngredientIds.includes(r.ingredientId))
+                .map(r => r.productId)
+        )];
+
+        for (const productId of affectedProductIds) {
+            const productRecipes = allRecipes.filter(r => r.productId === productId);
+            let totalCost = 0;
+            for (const r of productRecipes) {
+                const ing = ingredients.find(i => i.id === r.ingredientId);
+                if (ing) totalCost += parseFloat(r.quantity) * (ing.buyPrice || 0);
+            }
+            const newBuyPrice = Math.round(totalCost);
+            if (this.platform !== 'web' && this.db) {
+                await this.db.run(`UPDATE products SET buyPrice=? WHERE id=?`, [newBuyPrice, productId]);
+            } else {
+                let products = await this._get('products');
+                products = products.map(p => p.id === productId ? { ...p, buyPrice: newBuyPrice } : p);
+                localStorage.setItem(DB_PREFIX + 'products', JSON.stringify(products));
+            }
+        }
+    }
+
+    /**
+     * Sinkronkan buyPrice untuk SEMUA produk yang punya resep.
+     * Berguna untuk migrasi data lama atau saat pertama kali tab Resep dibuka.
+     */
+    async syncAllProductsBuyPrice() {
+        const allRecipes = await this.getRecipes();
+        if (allRecipes.length === 0) return;
+
+        const ingredients = await this.getIngredients();
+        const uniqueProductIds = [...new Set(allRecipes.map(r => r.productId))];
+
+        for (const productId of uniqueProductIds) {
+            const productRecipes = allRecipes.filter(r => r.productId === productId);
+            let totalCost = 0;
+            for (const r of productRecipes) {
+                const ing = ingredients.find(i => i.id === r.ingredientId);
+                if (ing) totalCost += parseFloat(r.quantity) * (ing.buyPrice || 0);
+            }
+            const newBuyPrice = Math.round(totalCost);
+            if (this.platform !== 'web' && this.db) {
+                await this.db.run(`UPDATE products SET buyPrice=? WHERE id=?`, [newBuyPrice, productId]);
+            } else {
+                let products = await this._get('products');
+                products = products.map(p => p.id === productId ? { ...p, buyPrice: newBuyPrice } : p);
+                localStorage.setItem(DB_PREFIX + 'products', JSON.stringify(products));
+            }
+        }
     }
 
     async getPurchases() {
@@ -782,6 +851,34 @@ class DatabaseService {
             });
             localStorage.setItem(DB_PREFIX + 'recipes', JSON.stringify(recipes));
         }
+
+        // Auto-update product buyPrice from recipe ingredient costs
+        await this._syncRecipeBuyPrice(productId, recipeItems);
+    }
+
+    /**
+     * Hitung total harga modal dari resep dan update buyPrice produk secara otomatis.
+     * Dipanggil setiap kali resep disimpan.
+     */
+    async _syncRecipeBuyPrice(productId, recipeItems) {
+        const ingredients = await this.getIngredients();
+        let totalCost = 0;
+        for (const item of recipeItems) {
+            const ing = ingredients.find(i => i.id === parseInt(item.ingredientId));
+            if (ing) {
+                totalCost += parseFloat(item.quantity) * (ing.buyPrice || 0);
+            }
+        }
+        const newBuyPrice = Math.round(totalCost);
+
+        if (this.platform !== 'web' && this.db) {
+            await this.db.run(`UPDATE products SET buyPrice=? WHERE id=?`, [newBuyPrice, productId]);
+        } else {
+            let products = await this._get('products');
+            products = products.map(p => p.id === productId ? { ...p, buyPrice: newBuyPrice } : p);
+            localStorage.setItem(DB_PREFIX + 'products', JSON.stringify(products));
+        }
+        return newBuyPrice;
     }
 
     async importFullDatabase(data) {
