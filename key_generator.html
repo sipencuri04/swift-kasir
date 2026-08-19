@@ -1,198 +1,757 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swift Kasir Key Generator</title>
+    <meta name="description" content="Swift Kasir KeyGen — Generate QR Code Aktivasi Sekali Pakai">
+    <title>🔑 Swift Kasir KeyGen</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
+        :root {
+            --bg:      #0f172a;
+            --bg2:     #1e293b;
+            --bg3:     #334155;
+            --text:    #f1f5f9;
+            --muted:   #94a3b8;
+            --border:  rgba(148,163,184,0.15);
+            --primary: #0ea5e9;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger:  #ef4444;
+            --purple:  #8b5cf6;
+            --radius:  16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Segoe UI', sans-serif;
-            padding: 40px;
-            background: #f0f9ff;
-            display: flex;
-            justify-content: center;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse at 20% 10%, rgba(14,165,233,0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(139,92,246,0.10) 0%, transparent 50%);
         }
 
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 500px;
+        /* ── Header ── */
+        .header {
+            text-align: center;
+            padding: 40px 20px 24px;
         }
-
-        h1 {
-            margin-top: 0;
-            color: #0284c7;
+        .logo-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .logo-icon {
+            width: 48px; height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
             font-size: 24px;
-            margin-bottom: 8px;
+            box-shadow: 0 4px 20px rgba(14,165,233,0.35);
+        }
+        .header h1 {
+            font-size: 26px; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+        .badge {
+            display: inline-block;
+            background: rgba(16,185,129,0.15);
+            border: 1px solid rgba(16,185,129,0.3);
+            color: var(--success);
+            border-radius: 99px;
+            padding: 3px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            margin-left: 8px;
         }
 
+        /* ── Tabs ── */
+        .tabs {
+            max-width: 820px;
+            margin: 0 auto 24px;
+            display: flex;
+            gap: 4px;
+            background: var(--bg2);
+            border-radius: var(--radius);
+            padding: 6px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 12px;
+            background: transparent;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+        }
+        .tab.active { background: var(--bg3); color: var(--text); }
+        .tab:hover:not(.active) { color: var(--text); }
+
+        /* ── Main ── */
+        .main { max-width: 820px; margin: 0 auto; padding: 0 20px 60px; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* ── Card ── */
+        .card {
+            background: rgba(30,41,59,0.85);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .card-title {
+            font-size: 15px; font-weight: 700;
+            margin-bottom: 22px;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        /* ── Form ── */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        @media(max-width: 560px) { .form-row { grid-template-columns: 1fr; } }
+        .form-group { margin-bottom: 16px; }
         label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #334155;
-            font-size: 14px;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
-            font-size: 16px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-            background: #f8fafc;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #0284c7;
-            background: white;
-        }
-
-        button {
-            background: #0284c7;
-            color: white;
-            border: none;
-            padding: 14px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            width: 100%;
-            transition: background 0.2s;
-        }
-
-        button:hover {
-            background: #0369a1;
-        }
-
-        .result {
-            margin-top: 24px;
-            padding: 24px;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-            border-radius: 12px;
-            display: none;
-        }
-
-        .key-label {
-            font-size: 11px;
+            font-size: 12px; font-weight: 600;
+            color: var(--muted);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #15803d;
-            margin-bottom: 4px;
-            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
         }
+        input, select {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
+        }
+        select option { background: var(--bg2); }
 
-        .key-value {
-            font-family: monospace;
-            font-size: 20px;
-            font-weight: bold;
-            color: #166534;
+        /* ── Buttons ── */
+        .btn {
+            padding: 12px 20px;
+            border: none; border-radius: 10px;
+            font-weight: 700; font-size: 14px;
+            cursor: pointer; transition: all 0.2s;
+            font-family: 'Inter', sans-serif;
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #0284c7);
+            color: white;
+            box-shadow: 0 4px 16px rgba(14,165,233,0.3);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(14,165,233,0.45); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { transform: translateY(-1px); }
+        .btn-ghost   { background: var(--bg3); color: var(--text); }
+        .btn-ghost:hover { background: #475569; }
+        .btn-danger  { background: rgba(239,68,68,0.12); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+        .btn-sm      { padding: 6px 12px; font-size: 12px; border-radius: 7px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .btn-full    { width: 100%; justify-content: center; padding: 14px; }
+
+        /* ── Result area ── */
+        .result-area { display: none; animation: fadeIn 0.4s ease; }
+        .result-area.show { display: block; }
+
+        /* ── Token display ── */
+        .token-box {
+            background: var(--bg2);
+            border: 1px solid rgba(14,165,233,0.35);
+            border-radius: 12px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 20px; font-weight: 800;
+            color: var(--primary);
+            letter-spacing: 3px;
+            text-align: center;
             margin-bottom: 16px;
             word-break: break-all;
         }
 
-        .emergency-box {
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px dashed #86efac;
+        /* ── One-time badge ── */
+        .onetime-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(245,158,11,0.12);
+            border: 1px solid rgba(245,158,11,0.3);
+            color: var(--warning);
+            border-radius: 99px;
+            padding: 4px 12px;
+            font-size: 11px; font-weight: 700;
+            margin-bottom: 14px;
         }
 
-        .cred-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-family: monospace;
-            font-size: 14px;
+        /* ── QR wrapper ── */
+        .qr-wrapper {
+            display: flex; flex-direction: column;
+            align-items: center; gap: 12px;
+            padding: 24px;
+            background: white;
+            border-radius: 16px;
+            margin-bottom: 16px;
+        }
+        .qr-wrapper canvas, .qr-wrapper img { border-radius: 8px; }
+        .qr-meta {
+            text-align: center; color: #1e293b;
+            font-size: 11px; font-weight: 700;
+            letter-spacing: 0.5px; text-transform: uppercase;
         }
 
-        .cred-label {
-            color: #15803d;
+        /* ── Bulk results ── */
+        .bulk-list {
+            display: flex; flex-direction: column;
+            gap: 10px; max-height: 380px; overflow-y: auto; padding-right: 4px;
+        }
+        .bulk-item {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 16px;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .bulk-item code {
+            font-family: monospace; font-size: 13px;
+            color: var(--primary); letter-spacing: 1px; flex: 1;
         }
 
-        .cred-val {
-            font-weight: bold;
-            color: #14532d;
+        /* ── Filter bar ── */
+        .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+        .filter-btn {
+            padding: 6px 14px; border-radius: 99px;
+            border: 1px solid var(--border);
+            background: transparent; color: var(--muted);
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            font-family: 'Inter', sans-serif; transition: all 0.15s;
         }
+        .filter-btn.active { background: var(--bg3); color: var(--text); border-color: var(--bg3); }
+
+        /* ── Table ── */
+        .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th {
+            background: var(--bg2); padding: 10px 14px; text-align: left;
+            font-size: 11px; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+        }
+        td { padding: 10px 14px; border-top: 1px solid var(--border); }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+        td code { font-family: monospace; font-size: 12px; color: var(--primary); letter-spacing: 0.5px; }
+
+        /* ── Status badges ── */
+        .status {
+            display: inline-block; padding: 3px 10px; border-radius: 99px;
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+        }
+        .status-UNUSED    { background: rgba(14,165,233,0.15); color: var(--primary); border:1px solid rgba(14,165,233,0.3); }
+        .status-ACTIVATED { background: rgba(16,185,129,0.15); color: var(--success); border:1px solid rgba(16,185,129,0.3); }
+        .status-EXPIRED   { background: rgba(245,158,11,0.15); color: var(--warning); border:1px solid rgba(245,158,11,0.3); }
+        .status-REVOKED   { background: rgba(239,68,68,0.15);  color: var(--danger);  border:1px solid rgba(239,68,68,0.3); }
+
+        /* ── Stats ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 14px; margin-bottom: 20px;
+        }
+        .stat-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 12px; padding: 16px 20px; text-align: center;
+        }
+        .stat-value { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+        .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* ── Toast ── */
+        .toast {
+            position: fixed; bottom: 24px; right: 24px;
+            background: var(--success); color: white;
+            padding: 12px 20px; border-radius: 10px;
+            font-size: 13px; font-weight: 600;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            display: none; z-index: 999;
+            animation: slideIn 0.3s ease;
+        }
+
+        .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
+        .empty-icon { font-size: 36px; margin-bottom: 10px; }
+        hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg2); }
+        ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideIn { from{transform:translateX(80px);opacity:0} to{transform:translateX(0);opacity:1} }
     </style>
 </head>
-
 <body>
 
-    <div class="card">
-        <h1>Swift Kasir KeyGen</h1>
-        <p style="color: #64748b; margin-bottom: 24px; font-size: 14px;">
-            Masukkan Device ID dari aplikasi customer untuk membuat kode aktivasi dan akun darurat.
-        </p>
+    <!-- Header -->
+    <div class="header">
+        <div class="logo-wrap">
+            <div class="logo-icon">⚡</div>
+            <h1>Swift Kasir KeyGen <span class="badge">v2.0</span></h1>
+        </div>
+        <p>Generate QR Code Aktivasi <strong style="color:var(--warning);">Sekali Pakai</strong> untuk Lisensi Swift Kasir</p>
+    </div>
 
-        <label>Device ID Customer</label>
-        <input type="text" id="deviceId" placeholder="Contoh: UNKNOWN_DEVICE atau ABCD-1234"
-            oninput="this.value = this.value.toUpperCase()">
+    <!-- Tabs -->
+    <div class="tabs" style="max-width:820px;margin:0 auto 24px;padding:6px;">
+        <button class="tab active" onclick="switchTab('generate')" id="tab-generate">🎯 Generate Token</button>
+        <button class="tab" onclick="switchTab('tokens')" id="tab-tokens">📋 Daftar Token</button>
+        <button class="tab" onclick="switchTab('stats')" id="tab-stats">📊 Statistik</button>
+    </div>
 
-        <button onclick="generate()">Generate Key</button>
+    <div class="main">
 
-        <div class="result" id="resultArea">
-            <div class="key-label">KODE AKTIVASI UTAMA</div>
-            <div class="key-value" id="outputKey">XXXX-XXXX-XXXX-XXXX</div>
+        <!-- TAB 1: Generate -->
+        <div id="panel-generate" class="panel active">
 
-            <div class="emergency-box">
-                <div class="key-label" style="color:#b91c1c; margin-bottom:8px;">AKUN LOGIN DARURAT (RANDOM)</div>
-                <div style="background: white; padding: 12px; border-radius: 8px; border: 1px solid #fca5a5;">
-                    <div class="cred-row">
-                        <span class="cred-label">Username:</span>
-                        <span class="cred-val" id="emerUser">ADMIN-XXXX</span>
+            <div class="card">
+                <div class="card-title">⚙️ Konfigurasi Token</div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Jenis Lisensi</label>
+                        <select id="licenseType">
+                            <option value="standard">Standar — 1 Tahun (365 hari)</option>
+                            <option value="premium">Premium — 2 Tahun (730 hari)</option>
+                            <option value="lifetime">Seumur Hidup</option>
+                        </select>
                     </div>
-                    <div class="cred-row" style="margin-bottom:0">
-                        <span class="cred-label">Password:</span>
-                        <span class="cred-val" id="emerPass">YYYYZZZZ</span>
+                    <div class="form-group">
+                        <label>Jumlah Token</label>
+                        <input type="number" id="tokenCount" value="1" min="1" max="50">
                     </div>
                 </div>
-                <div style="font-size: 11px; color: #991b1b; margin-top:8px; line-height: 1.4;">
-                    Gunakan akun ini jika database kosong atau kelupaan password. Saat login, akun 'owner' akan direset.
+
+                <button class="btn btn-primary btn-full" id="btnGenerate" onclick="generateTokens()">
+                    ⚡ Generate QR Token
+                </button>
+
+                <div style="margin-top:14px;padding:12px 14px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.6;">
+                    🔒 <strong style="color:var(--warning);">Token Sekali Pakai</strong> — Setiap QR hanya bisa digunakan <strong>satu kali</strong> untuk mengaktivasi satu perangkat. Setelah dipindai, QR tidak bisa digunakan kembali.
+                </div>
+            </div>
+
+            <!-- Single Result -->
+            <div class="result-area" id="resultSingle">
+                <div class="card">
+                    <div class="card-title">🎯 QR Code Aktivasi</div>
+                    <div style="text-align:center;margin-bottom:14px;">
+                        <span class="onetime-badge">🔒 Token Sekali Pakai</span>
+                    </div>
+                    <div class="token-box" id="singleToken">SK-XXXXXXXXXXXX-XXXX</div>
+                    <div class="qr-wrapper" id="qrContainer">
+                        <div id="qrCode"></div>
+                        <div class="qr-meta">
+                            <div id="qrLicenseLabel" style="font-size:12px;font-weight:700;color:#1e293b;">Lisensi Standar 1 Tahun</div>
+                            <div style="color:#64748b;margin-top:3px;font-size:10px;">Swift Kasir · Scan untuk Aktivasi</div>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <button class="btn btn-ghost" onclick="copyToken()" style="flex:1;justify-content:center;">📋 Salin Token</button>
+                        <button class="btn btn-success" onclick="downloadQR()" style="flex:1;justify-content:center;">⬇️ Download QR</button>
+                    </div>
+                    <div id="tokenInfo" style="margin-top:14px;padding:12px 14px;background:var(--bg2);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.8;display:none;">
+                        <div>📅 Dibuat: <span id="infoCreated" style="color:var(--text);"></span></div>
+                        <div>⏳ Durasi: <span id="infoDuration" style="color:var(--text);"></span></div>
+                        <div>🔑 Status: <span class="status status-UNUSED">UNUSED</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk Result -->
+            <div class="result-area" id="resultBulk">
+                <div class="card">
+                    <div class="card-title">📦 Token Massal</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+                        <span id="bulkCountLabel" style="color:var(--muted);font-size:13px;"></span>
+                        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📤 Export CSV</button>
+                    </div>
+                    <div class="bulk-list" id="bulkList"></div>
                 </div>
             </div>
         </div>
-    </div>
+
+        <!-- TAB 2: Daftar Token -->
+        <div id="panel-tokens" class="panel">
+            <div class="card">
+                <div class="card-title">📋 Semua Token</div>
+                <div class="filter-bar">
+                    <button class="filter-btn active" onclick="filterTokens('ALL', this)">Semua</button>
+                    <button class="filter-btn" onclick="filterTokens('UNUSED', this)">🔵 Belum Dipakai</button>
+                    <button class="filter-btn" onclick="filterTokens('ACTIVATED', this)">🟢 Aktif</button>
+                    <button class="filter-btn" onclick="filterTokens('EXPIRED', this)">🟡 Kedaluwarsa</button>
+                    <button class="filter-btn" onclick="filterTokens('REVOKED', this)">🔴 Dicabut</button>
+                    <button class="btn btn-ghost btn-sm" onclick="exportCSV()" style="margin-left:auto;">📤 CSV</button>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Token</th><th>Tipe</th><th>Status</th>
+                                <th>Dibuat</th><th>Diaktivasi</th><th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tokenTableBody">
+                            <tr><td colspan="6"><div class="empty"><div class="empty-icon">🎫</div>Belum ada token.</div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Statistik -->
+        <div id="panel-stats" class="panel">
+            <div class="card">
+                <div class="card-title">📊 Statistik Token</div>
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-value" id="statTotal" style="color:var(--text);">0</div><div class="stat-label">Total Token</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statUnused" style="color:var(--primary);">0</div><div class="stat-label">Belum Dipakai</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statActivated" style="color:var(--success);">0</div><div class="stat-label">Aktif</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statExpired" style="color:var(--warning);">0</div><div class="stat-label">Kedaluwarsa</div></div>
+                    <div class="stat-card"><div class="stat-value" id="statRevoked" style="color:var(--danger);">0</div><div class="stat-label">Dicabut</div></div>
+                </div>
+                <hr>
+                <div class="card-title" style="margin-bottom:14px;">📅 Token Terbaru</div>
+                <div id="recentTokens" style="color:var(--muted);font-size:13px;">Belum ada token.</div>
+            </div>
+        </div>
+
+    </div><!-- /main -->
+
+    <div class="toast" id="toast">✅ Berhasil!</div>
 
     <script>
-        const SALT = 'SWIFT_KASIR_SECURE_V1_2025';
+        // ══════════════════════════════════════════════════════
+        // CONFIG — harus sinkron dengan LicenseService.js di aplikasi
+        // ══════════════════════════════════════════════════════
+        const QR_SALT   = 'SWIFT_KASIR_QR_ACTIVATION_2025';
+        const STORE_KEY = 'swiftkeygen_tokens_v2';
 
-        async function generate() {
-            const deviceId = document.getElementById('deviceId').value.trim();
-            if (!deviceId) return alert('Masukkan Device ID!');
-
-            const text = deviceId + SALT;
-            const msgBuffer = new TextEncoder().encode(text);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-
-            // Expected Key Logic: First 16 chars formatted
-            const raw = hashHex.substring(0, 16);
-            const formatted = raw.match(/.{1,4}/g).join('-'); // ABCD-EFGH-IJKL-MNOP
-
-            // Logic Emergency Account: Consistent with App Logic
-            // User: ADMIN-{Block1}
-            // Pass: {Block2}{Block3}
-            const parts = formatted.split('-');
-            const magicUser = `ADMIN-${parts[0]}`;
-            const magicPass = `${parts[1]}${parts[2]}`;
-
-            document.getElementById('outputKey').innerText = formatted;
-            document.getElementById('emerUser').innerText = magicUser;
-            document.getElementById('emerPass').innerText = magicPass;
-
-            document.getElementById('resultArea').style.display = 'block';
+        // ── Storage ──────────────────────────────────────────
+        function loadTokens() {
+            try { return JSON.parse(localStorage.getItem(STORE_KEY) || '[]'); }
+            catch(e) { return []; }
         }
+        function saveTokens(t) { localStorage.setItem(STORE_KEY, JSON.stringify(t)); }
+
+        // ── Generate satu QR token kriptografis (sekali pakai) ─
+        async function generateOneToken(type) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            const buf = new Uint8Array(16);
+            crypto.getRandomValues(buf);
+
+            let prefix = 'ST';
+            if (type === 'premium')  prefix = 'PR';
+            if (type === 'lifetime') prefix = 'LT';
+
+            const rnd = Array.from(buf.slice(0, 10))
+                .map(b => chars[b % chars.length]).join('');
+            const body = prefix + rnd; // 12 chars
+
+            // Checksum SHA-256 (4 char pertama)
+            const text    = `SK-${body}${QR_SALT}`;
+            const encoded = new TextEncoder().encode(text);
+            const hashBuf = await crypto.subtle.digest('SHA-256', encoded);
+            const hashHex = Array.from(new Uint8Array(hashBuf))
+                .map(b => b.toString(16).padStart(2,'0')).join('').toUpperCase();
+            const checksum = hashHex.substring(0, 4);
+
+            return `SK-${body}-${checksum}`;
+        }
+
+        function getLicenseLabel(type) {
+            if (type === 'premium')  return 'Premium — 2 Tahun';
+            if (type === 'lifetime') return 'Seumur Hidup';
+            return 'Standar — 1 Tahun';
+        }
+        function getDurationDays(type) {
+            if (type === 'premium')  return 730;
+            if (type === 'lifetime') return 36500;
+            return 365;
+        }
+
+        // ── Generate handler ──────────────────────────────────
+        async function generateTokens() {
+            const type  = document.getElementById('licenseType').value;
+            const count = Math.max(1, Math.min(50, parseInt(document.getElementById('tokenCount').value) || 1));
+
+            const btn = document.getElementById('btnGenerate');
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Generating...';
+
+            const newTokens = [];
+            for (let i = 0; i < count; i++) {
+                const token = await generateOneToken(type);
+                newTokens.push({
+                    token,
+                    license_type: type,
+                    duration_days: getDurationDays(type),
+                    status: 'UNUSED',
+                    created_at: new Date().toISOString(),
+                    activated_at: null,
+                });
+            }
+
+            const all = loadTokens();
+            all.unshift(...newTokens);
+            saveTokens(all);
+
+            if (count === 1) {
+                showSingleResult(newTokens[0]);
+            } else {
+                showBulkResult(newTokens, type);
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '⚡ Generate QR Token';
+            renderTokenTable('ALL');
+            renderStats();
+        }
+
+        // ── Single result ─────────────────────────────────────
+        function showSingleResult(tokenObj) {
+            document.getElementById('resultBulk').classList.remove('show');
+            document.getElementById('resultSingle').classList.add('show');
+            document.getElementById('singleToken').textContent = tokenObj.token;
+            document.getElementById('qrLicenseLabel').textContent = getLicenseLabel(tokenObj.license_type);
+
+            // Render QR
+            const qrEl = document.getElementById('qrCode');
+            qrEl.innerHTML = '';
+            new QRCode(qrEl, {
+                text: tokenObj.token,
+                width: 220, height: 220,
+                colorDark: '#0f172a', colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H,
+            });
+
+            // Info panel
+            document.getElementById('infoCreated').textContent  = fmtDate(tokenObj.created_at);
+            document.getElementById('infoDuration').textContent =
+                tokenObj.duration_days === 36500 ? 'Seumur Hidup' : tokenObj.duration_days + ' hari';
+            document.getElementById('tokenInfo').style.display  = 'block';
+
+            document.getElementById('resultSingle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // ── Bulk result ───────────────────────────────────────
+        function showBulkResult(tokens, type) {
+            document.getElementById('resultSingle').classList.remove('show');
+            document.getElementById('resultBulk').classList.add('show');
+            document.getElementById('bulkCountLabel').textContent =
+                `${tokens.length} token ${getLicenseLabel(type)} · Sekali Pakai`;
+
+            const list = document.getElementById('bulkList');
+            list.innerHTML = tokens.map((t, i) => `
+                <div class="bulk-item">
+                    <span style="color:var(--muted);font-size:12px;min-width:26px;">${i+1}.</span>
+                    <code>${t.token}</code>
+                    <span class="status status-UNUSED">UNUSED</span>
+                    <button class="btn btn-ghost btn-sm" onclick="copyText('${t.token}')">📋</button>
+                </div>
+            `).join('');
+
+            document.getElementById('resultBulk').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        // ── Token table ───────────────────────────────────────
+        let currentFilter = 'ALL';
+
+        function filterTokens(status, btn) {
+            currentFilter = status;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderTokenTable(status);
+        }
+
+        function renderTokenTable(filter) {
+            const tokens   = loadTokens();
+            const filtered = filter === 'ALL' ? tokens : tokens.filter(t => t.status === filter);
+            const tbody    = document.getElementById('tokenTableBody');
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">🎫</div>Tidak ada token.</div></td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(t => {
+                const realIdx = tokens.indexOf(t);
+                return `
+                <tr>
+                    <td><code>${t.token}</code></td>
+                    <td style="font-size:12px;">${getLicenseLabel(t.license_type)}</td>
+                    <td><span class="status status-${t.status}">${t.status}</span></td>
+                    <td style="font-size:12px;color:var(--muted);">${fmtDate(t.created_at)}</td>
+                    <td style="font-size:12px;color:var(--muted);">${t.activated_at ? fmtDate(t.activated_at) : '—'}</td>
+                    <td style="white-space:nowrap;">
+                        <button class="btn btn-ghost btn-sm" onclick="copyText('${t.token}')">📋</button>
+                        ${t.status === 'UNUSED'
+                            ? `<button class="btn btn-danger btn-sm" onclick="revokeToken(${realIdx})" style="margin-left:4px;">✕ Cabut</button>`
+                            : ''}
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function revokeToken(idx) {
+            if (!confirm('Yakin ingin mencabut token ini? Token tidak bisa digunakan lagi.')) return;
+            const tokens = loadTokens();
+            if (tokens[idx]) {
+                tokens[idx].status = 'REVOKED';
+                saveTokens(tokens);
+                renderTokenTable(currentFilter);
+                renderStats();
+                showToast('Token berhasil dicabut.');
+            }
+        }
+
+        // ── Stats ─────────────────────────────────────────────
+        function renderStats() {
+            const tokens = loadTokens();
+            const cnt = s => tokens.filter(t => t.status === s).length;
+            document.getElementById('statTotal').textContent     = tokens.length;
+            document.getElementById('statUnused').textContent    = cnt('UNUSED');
+            document.getElementById('statActivated').textContent = cnt('ACTIVATED');
+            document.getElementById('statExpired').textContent   = cnt('EXPIRED');
+            document.getElementById('statRevoked').textContent   = cnt('REVOKED');
+
+            const recent = tokens.slice(0, 5);
+            document.getElementById('recentTokens').innerHTML = recent.length === 0
+                ? '<div style="color:var(--muted)">Belum ada token.</div>'
+                : recent.map(t => `
+                    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;">
+                        <code style="font-size:12px;color:var(--primary);">${t.token}</code>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="status status-${t.status}">${t.status}</span>
+                            <span style="font-size:11px;color:var(--muted);">${fmtDate(t.created_at)}</span>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        // ── Export CSV ────────────────────────────────────────
+        function exportCSV() {
+            const tokens = loadTokens();
+            if (!tokens.length) { showToast('Belum ada token untuk di-export.'); return; }
+            const header = 'Token,Tipe Lisensi,Durasi (Hari),Status,Dibuat,Diaktivasi\n';
+            const rows   = tokens.map(t =>
+                `${t.token},${getLicenseLabel(t.license_type)},${t.duration_days},${t.status},${fmtDate(t.created_at)},${t.activated_at ? fmtDate(t.activated_at) : ''}`
+            ).join('\n');
+            const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `swift-kasir-tokens-${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            showToast('CSV berhasil di-export!');
+        }
+
+        // ── Download QR ───────────────────────────────────────
+        function downloadQR() {
+            const qrEl = document.querySelector('#qrCode canvas') || document.querySelector('#qrCode img');
+            if (!qrEl) { showToast('QR belum dibuat.'); return; }
+
+            const token = document.getElementById('singleToken').textContent;
+            const label = document.getElementById('qrLicenseLabel').textContent;
+
+            const canvas = document.createElement('canvas');
+            const ctx    = canvas.getContext('2d');
+            const qSize  = 260;
+            canvas.width  = qSize + 40;
+            canvas.height = qSize + 80;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, 32);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('⚡ SWIFT KASIR', canvas.width / 2, 21);
+
+            const src = qrEl.tagName === 'CANVAS' ? qrEl.toDataURL() : qrEl.src;
+            const img = new Image();
+            img.onload = () => {
+                ctx.drawImage(img, 20, 40, qSize, qSize);
+                ctx.fillStyle = '#0ea5e9';
+                ctx.font = 'bold 11px Courier New, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(token, canvas.width / 2, qSize + 56);
+                ctx.fillStyle = '#64748b';
+                ctx.font = '10px Inter, sans-serif';
+                ctx.fillText(label + ' · Sekali Pakai', canvas.width / 2, qSize + 70);
+                const a = document.createElement('a');
+                a.href     = canvas.toDataURL('image/png');
+                a.download = `qr-${token}.png`;
+                a.click();
+                showToast('QR berhasil di-download!');
+            };
+            img.src = src;
+        }
+
+        // ── Helpers ───────────────────────────────────────────
+        function copyToken() { copyText(document.getElementById('singleToken').textContent); }
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => showToast('Token disalin!'));
+        }
+        function fmtDate(iso) {
+            if (!iso) return '—';
+            return new Date(iso).toLocaleDateString('id-ID', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+        function showToast(msg) {
+            const el = document.getElementById('toast');
+            el.textContent = '✅ ' + msg;
+            el.style.display = 'block';
+            clearTimeout(window._t);
+            window._t = setTimeout(() => el.style.display = 'none', 2500);
+        }
+
+        // ── Tab switching ─────────────────────────────────────
+        function switchTab(name) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById('panel-' + name).classList.add('active');
+            document.getElementById('tab-' + name).classList.add('active');
+            if (name === 'tokens') renderTokenTable(currentFilter);
+            if (name === 'stats')  renderStats();
+        }
+
+        // ── Init ──────────────────────────────────────────────
+        renderStats();
     </script>
 
 </body>
-
 </html>
