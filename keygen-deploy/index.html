@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         :root {
             --bg:      #0f172a;
@@ -395,7 +396,10 @@
                     <div class="card-title">📦 Token Massal</div>
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
                         <span id="bulkCountLabel" style="color:var(--muted);font-size:13px;"></span>
-                        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📤 Export CSV</button>
+                        <div>
+                            <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📤 Export CSV</button>
+                            <button class="btn btn-ghost btn-sm" onclick="exportBulkPDF()" style="margin-left:4px;">📥 Export PDF</button>
+                        </div>
                     </div>
                     <div class="bulk-list" id="bulkList"></div>
                 </div>
@@ -412,7 +416,10 @@
                     <button class="filter-btn" onclick="filterTokens('ACTIVATED', this)">🟢 Aktif</button>
                     <button class="filter-btn" onclick="filterTokens('EXPIRED', this)">🟡 Kedaluwarsa</button>
                     <button class="filter-btn" onclick="filterTokens('REVOKED', this)">🔴 Dicabut</button>
-                    <button class="btn btn-ghost btn-sm" onclick="exportCSV()" style="margin-left:auto;">📤 CSV</button>
+                    <div style="margin-left:auto; display:flex; gap:4px;">
+                        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📤 CSV</button>
+                        <button class="btn btn-ghost btn-sm" onclick="exportFilteredPDF()">📥 PDF</button>
+                    </div>
                 </div>
                 <div class="table-wrap">
                     <table>
@@ -526,6 +533,9 @@
             const all = loadTokens();
             all.unshift(...newTokens);
             saveTokens(all);
+            
+            // Save current bulk to global variable for PDF export
+            window.lastBulkTokens = newTokens;
 
             if (count === 1) {
                 showSingleResult(newTokens[0]);
@@ -616,8 +626,11 @@
                     <td style="font-size:12px;color:var(--muted);">${t.activated_at ? fmtDate(t.activated_at) : '—'}</td>
                     <td style="white-space:nowrap;">
                         <button class="btn btn-ghost btn-sm" onclick="copyText('${t.token}')">📋</button>
+                        ${t.status === 'UNUSED' || t.status === 'REVOKED'
+                            ? `<button class="btn btn-danger btn-sm" onclick="deleteToken(${realIdx})" style="margin-left:4px;" title="Hapus Permanen">🗑️</button>`
+                            : ''}
                         ${t.status === 'UNUSED'
-                            ? `<button class="btn btn-danger btn-sm" onclick="revokeToken(${realIdx})" style="margin-left:4px;">✕ Cabut</button>`
+                            ? `<button class="btn btn-danger btn-sm" onclick="revokeToken(${realIdx})" style="margin-left:4px;" title="Cabut Token">✕</button>`
                             : ''}
                     </td>
                 </tr>`;
@@ -633,6 +646,18 @@
                 renderTokenTable(currentFilter);
                 renderStats();
                 showToast('Token berhasil dicabut.');
+            }
+        }
+
+        function deleteToken(idx) {
+            if (!confirm('Hapus token ini secara PERMANEN dari daftar?')) return;
+            const tokens = loadTokens();
+            if (tokens[idx]) {
+                tokens.splice(idx, 1);
+                saveTokens(tokens);
+                renderTokenTable(currentFilter);
+                renderStats();
+                showToast('Token dihapus permanen.');
             }
         }
 
@@ -717,6 +742,114 @@
                 showToast('QR berhasil di-download!');
             };
             img.src = src;
+        }
+
+        // ── Download PDF (Bulk) ───────────────────────────────
+        function exportBulkPDF() {
+            if (window.lastBulkTokens && window.lastBulkTokens.length > 0) {
+                generatePDF(window.lastBulkTokens);
+            } else {
+                showToast('Tidak ada token bulk terbaru.');
+            }
+        }
+
+        function exportFilteredPDF() {
+            const tokens = loadTokens();
+            const filtered = currentFilter === 'ALL' ? tokens : tokens.filter(t => t.status === currentFilter);
+            if (filtered.length > 0) {
+                generatePDF(filtered);
+            } else {
+                showToast('Tidak ada token untuk diekspor.');
+            }
+        }
+
+        async function generatePDF(tokenList) {
+            if (!window.jspdf) { showToast('Memuat pustaka PDF...'); return; }
+            const { jsPDF } = window.jspdf;
+            
+            showToast('Membuat PDF... Mohon tunggu.');
+            const btn = document.activeElement;
+            if(btn) btn.innerHTML = '⏳ Memproses...';
+            
+            // Jeda agar UI bisa update pesan toast
+            await new Promise(r => setTimeout(r, 50)); 
+            
+            const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            
+            const cols = 3;
+            const margin = 10;
+            const itemWidth = (pageWidth - (margin * 2) - ((cols - 1) * 5)) / cols;
+            const itemHeight = itemWidth + 24; 
+            
+            let x = margin;
+            let y = margin;
+            let colIdx = 0;
+            
+            const tempDiv = document.createElement('div');
+            document.body.appendChild(tempDiv);
+            
+            for (let i = 0; i < tokenList.length; i++) {
+                const t = tokenList[i];
+                
+                if (y + itemHeight > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                    x = margin;
+                    colIdx = 0;
+                }
+                
+                doc.setDrawColor(200, 200, 200);
+                doc.roundedRect(x, y, itemWidth, itemHeight, 3, 3);
+                
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(10);
+                doc.setTextColor(15, 23, 42);
+                doc.text("SWIFT KASIR", x + itemWidth/2, y + 6, { align: "center" });
+                
+                tempDiv.innerHTML = '';
+                new QRCode(tempDiv, {
+                    text: t.token,
+                    width: 200, height: 200,
+                    colorDark: '#0f172a', colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.H,
+                });
+                
+                // Beri waktu sejenak agar QR tergambar di canvas browser
+                await new Promise(r => setTimeout(r, 5)); 
+                const canvas = tempDiv.querySelector('canvas');
+                if (canvas) {
+                    const imgData = canvas.toDataURL('image/jpeg');
+                    const qrSize = itemWidth - 10;
+                    doc.addImage(imgData, 'JPEG', x + 5, y + 8, qrSize, qrSize);
+                }
+                
+                doc.setFont("courier", "bold");
+                doc.setFontSize(9);
+                doc.setTextColor(14, 165, 233); 
+                doc.text(t.token, x + itemWidth/2, y + itemWidth + 6, { align: "center" });
+                
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(7);
+                doc.setTextColor(100, 116, 139); 
+                doc.text(getLicenseLabel(t.license_type) + ' · 1X Pakai', x + itemWidth/2, y + itemWidth + 12, { align: "center" });
+                doc.text(fmtDate(t.created_at), x + itemWidth/2, y + itemWidth + 17, { align: "center" });
+                
+                colIdx++;
+                if (colIdx >= cols) {
+                    colIdx = 0;
+                    x = margin;
+                    y += itemHeight + 5;
+                } else {
+                    x += itemWidth + 5;
+                }
+            }
+            
+            document.body.removeChild(tempDiv);
+            doc.save(`SwiftKasir_QR_${new Date().getTime()}.pdf`);
+            if(btn) btn.innerHTML = '📥 PDF';
+            showToast('PDF berhasil diunduh!');
         }
 
         // ── Helpers ───────────────────────────────────────────
