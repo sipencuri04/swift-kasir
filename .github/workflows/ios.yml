@@ -40,20 +40,22 @@ jobs:
             npx cap add ios
           fi
 
+      - name: Setup CocoaPods
+        run: |
+          pod --version || brew install cocoapods
+
       - name: Sync web assets to iOS
         run: npx cap sync ios
 
       - name: Check Xcode version
         run: xcodebuild -version
 
-      - name: Resolve CocoaPods (if Podfile exists)
+      - name: Install Pods (if Podfile exists)
         run: |
           if [ -f "ios/App/Podfile" ]; then
             cd ios/App
-            pod install --repo-update
+            pod install
             cd ../..
-          else
-            echo "Using Swift Package Manager (SPM) bundled with Capacitor"
           fi
 
       - name: Build Xcode project (Archive)
