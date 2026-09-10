@@ -24,19 +24,19 @@ const StockOpnameTab = ({ onComplete }) => {
     const handleSearch = (text) => {
         setSearch(text);
         const product = products.find(p => 
-            (p.barcode && p.barcode.toLowerCase() === text.toLowerCase()) ||
-            p.name.toLowerCase().includes(text.toLowerCase())
+            String(p.barcode || '').toLowerCase() === text.toLowerCase() ||
+            String(p.name || '').toLowerCase().includes(text.toLowerCase())
         );
-        if (product && (p => p.barcode && p.barcode.toLowerCase() === text.toLowerCase())) {
+        if (product && (p => String(p.barcode || '').toLowerCase() === text.toLowerCase())) {
              // If exact barcode match, select it
-             const exact = products.find(p => p.barcode && p.barcode.toLowerCase() === text.toLowerCase());
+             const exact = products.find(p => String(p.barcode || '').toLowerCase() === text.toLowerCase());
              if (exact) setSelectedProduct(exact);
         }
     };
 
     const filteredSearch = products.filter(p => 
-        p.name.toLowerCase().includes(search.toLowerCase()) || 
-        (p.barcode && p.barcode.toLowerCase().includes(search.toLowerCase()))
+        String(p.name || '').toLowerCase().includes(search.toLowerCase()) || 
+        String(p.barcode || '').toLowerCase().includes(search.toLowerCase())
     );
 
     const handleSave = async (e) => {

@@ -253,11 +253,6 @@ const HistoryPage = () => {
                 </>
             ) : (
                 <>
-                    {/* Purchase Header with Action */}
-                    <div style={{ marginBottom: 20 }}>
-                        <div className="text-muted">Data ini menampilkan riwayat pengembalian barang dari pelanggan.</div>
-                    </div>
-
                     {/* Purchase Summary */}
                     <div className="grid-2" style={{ marginBottom: 20 }}>
                         <div className="card" style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', display: 'flex', flexDirection: 'column', gap: 4 }}>

@@ -335,7 +335,6 @@ const HardwareView = ({ onBack }) => {
     return (
         <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
             <div className="flex items-center mb-6" onClick={onBack} style={{ cursor: 'pointer', gap: 8 }}>
-                <ArrowLeft size={20} />
                 <h2>Pengaturan Hardware</h2>
             </div>
 
@@ -383,53 +382,77 @@ const HardwareView = ({ onBack }) => {
                 </button>
             </div>
 
-            {/* 3. Printer Bluetooth */}
+            {/* 3. Printer Kasir */}
             <div className="card mb-6">
-                <div className="flex items-center mb-4" style={{ gap: 12 }}>
+                <div className="flex items-center mb-6" style={{ gap: 12 }}>
                     <div style={{ padding: 8, background: 'rgba(56, 189, 248, 0.1)', borderRadius: 8 }}>
-                        <Bluetooth size={24} className="text-accent" />
+                        <FileText size={24} className="text-accent" />
                     </div>
                     <div>
                         <h3 style={{ margin: 0 }}>Printer Kasir (Thermal)</h3>
-                        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>Mendukung ukuran 58mm & 80mm</p>
+                        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>Pilih metode koneksi yang sesuai dengan perangkat Anda</p>
                     </div>
                 </div>
 
-                <p className={connectedId ? "text-accent" : "text-muted"} style={{ marginBottom: 16, fontWeight: 'bold' }}>
-                    Status: {connectedId ? "Terhubung" : "Tidak Terhubung"}
-                </p>
-
-                {connectedId && (
-                    <button className="btn btn-danger" onClick={disconnect} style={{ marginBottom: 16, width: '100%', justifyContent: 'center' }}>
-                        Putuskan Koneksi Printer
-                    </button>
-                )}
-
-                <button className="btn btn-primary" onClick={scanDevices} disabled={scanning} style={{ width: '100%', justifyContent: 'center' }}>
-                    {scanning ? <Loader className="spin" size={20} /> : <Bluetooth size={20} />}
-                    {scanning ? 'Mencari Perangkat...' : 'Cari & Hubungkan Printer'}
-                </button>
-
-                <p style={{ marginTop: 12, fontSize: 13, color: '#94a3b8', textAlign: 'center' }}>
-                    {status}
-                </p>
-
-                {devices.length > 0 && (
-                    <div className="product-list" style={{ marginTop: 20 }}>
-                        {devices.map((d, i) => (
-                            <div key={i} className="product-card" onClick={() => connect(d)} style={{ cursor: 'pointer', border: connectedId === d.address ? '2px solid var(--primary)' : '1px solid var(--border-color)' }}>
-                                <div className="flex items-center">
-                                    <Bluetooth size={24} style={{ marginRight: 12, color: connectedId === d.address ? 'var(--primary)' : '#94a3b8' }} />
-                                    <div>
-                                        <h3 style={{ margin: 0, fontSize: 16 }}>{d.name || 'Unnamed Printer'}</h3>
-                                        <p style={{ fontSize: 12, margin: 0 }}>{d.address}</p>
-                                    </div>
-                                </div>
-                                {connectedId === d.address && <CheckCircle size={20} color="var(--primary)" />}
-                            </div>
-                        ))}
+                {/* Section USB */}
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: 12, padding: 16, marginBottom: 16 }}>
+                    <div className="flex items-center mb-3" style={{ gap: 8 }}>
+                        <Database size={18} color="var(--primary)" />
+                        <h4 style={{ margin: 0, fontSize: 15 }}>Koneksi USB (PC / Laptop)</h4>
                     </div>
-                )}
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 0, lineHeight: 1.5 }}>
+                        Untuk PC/Laptop, pastikan printer USB sudah terhubung & driver bawaan di-install di Windows. Saat mencetak struk, dialog Print Windows akan muncul otomatis.
+                    </p>
+                </div>
+
+                {/* Section Bluetooth */}
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: 12, padding: 16 }}>
+                    <div className="flex items-center mb-3" style={{ gap: 8 }}>
+                        <Bluetooth size={18} color="var(--primary)" />
+                        <h4 style={{ margin: 0, fontSize: 15 }}>Koneksi Bluetooth (Android / Tablet)</h4>
+                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+                        Khusus untuk pengguna Android. Cari dan hubungkan printer thermal Bluetooth Anda di bawah ini:
+                    </p>
+
+                    <p className={connectedId ? "text-accent" : "text-muted"} style={{ marginBottom: 16, fontWeight: 'bold', fontSize: 13 }}>
+                        Status: {connectedId ? "Terhubung" : "Tidak Terhubung"}
+                    </p>
+
+                    {connectedId && (
+                        <button className="btn btn-danger" onClick={disconnect} style={{ marginBottom: 16, width: '100%', justifyContent: 'center' }}>
+                            Putuskan Koneksi Bluetooth
+                        </button>
+                    )}
+
+                    <button className="btn btn-primary" onClick={scanDevices} disabled={scanning} style={{ width: '100%', justifyContent: 'center' }}>
+                        {scanning ? <Loader className="spin" size={18} /> : <Bluetooth size={18} />}
+                        {scanning ? 'Mencari Perangkat...' : 'Cari & Hubungkan Printer'}
+                    </button>
+
+                    {status && (
+                        <p style={{ marginTop: 12, fontSize: 13, color: '#94a3b8', textAlign: 'center' }}>
+                            {status}
+                        </p>
+                    )}
+
+                    {devices.length > 0 && (
+                        <div className="product-list" style={{ marginTop: 20 }}>
+                            {devices.map((d, i) => (
+                                <div key={i} className="product-card" onClick={() => connect(d)} style={{ cursor: 'pointer', border: connectedId === d.address ? '2px solid var(--primary)' : '1px solid var(--border-color)' }}>
+                                    <div className="flex items-center">
+                                        <Bluetooth size={24} style={{ marginRight: 12, color: connectedId === d.address ? 'var(--primary)' : '#94a3b8' }} />
+                                        <div>
+                                            <h3 style={{ margin: 0, fontSize: 16 }}>{d.name || 'Unnamed Printer'}</h3>
+                                            <p style={{ fontSize: 12, margin: 0 }}>{d.address}</p>
+                                        </div>
+                                    </div>
+                                    {connectedId === d.address && <CheckCircle size={20} color="var(--primary)" />}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
@@ -496,12 +519,6 @@ const UsersView = ({ onBack }) => {
     return (
         <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
             <div className="flex items-center mb-6" style={{ gap: 12 }}>
-                <button 
-                    onClick={onBack}
-                    style={{ background: 'transparent', border: '1px solid var(--border-color)', borderRadius: 10, padding: 8, cursor: 'pointer', color: 'var(--text-main)' }}
-                >
-                    <ArrowLeft size={20} />
-                </button>
                 <h2 style={{ margin: 0 }}>Manajemen User</h2>
             </div>
 
@@ -806,7 +823,6 @@ const DataManagementView = ({ onBack }) => {
     return (
         <div className="page-container">
             <div className="flex items-center mb-6" onClick={onBack} style={{ cursor: 'pointer', gap: 12 }}>
-                <ArrowLeft size={24} />
                 <h2 style={{ margin: 0 }}>Manajemen Data</h2>
             </div>
 
@@ -949,7 +965,6 @@ const CashRegisterView = ({ onBack }) => {
         return (
             <div>
                 <div className="flex items-center mb-6" onClick={onBack} style={{ cursor: 'pointer', gap: 8 }}>
-                    <ArrowLeft size={20} />
                     <h2>Tutup Kasir</h2>
                 </div>
                 <div className="card">
@@ -963,7 +978,6 @@ const CashRegisterView = ({ onBack }) => {
         return (
             <div>
                 <div className="flex items-center mb-6" onClick={onBack} style={{ cursor: 'pointer', gap: 8 }}>
-                    <ArrowLeft size={20} />
                     <h2>Laporan Penutupan</h2>
                 </div>
                 <div className="card">
@@ -1011,7 +1025,6 @@ const CashRegisterView = ({ onBack }) => {
     return (
         <div>
             <div className="flex items-center mb-6" onClick={onBack} style={{ cursor: 'pointer', gap: 8 }}>
-                <ArrowLeft size={20} />
                 <h2>Tutup Kasir</h2>
             </div>
 
@@ -1148,9 +1161,6 @@ const ReceiptView = ({ onBack }) => {
     return (
         <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
             <div className="flex items-center gap-2 mb-6">
-                <button className="btn-icon" onClick={onBack} style={{ background: 'transparent', border: '1px solid var(--border-color)' }}>
-                    <ArrowLeft size={20} />
-                </button>
                 <h1 style={{ margin: 0 }}>Pengaturan Struk</h1>
             </div>
 
@@ -1276,9 +1286,6 @@ const QrisView = ({ onBack }) => {
     return (
         <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
             <div className="flex items-center gap-2 mb-6">
-                <button className="btn-icon" onClick={onBack} style={{ background: 'transparent', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8, cursor: 'pointer', borderRadius: 8, color: 'var(--text-main)' }}>
-                    <ArrowLeft size={20} />
-                </button>
                 <h2 style={{ margin: 0 }}>Pengaturan QRIS</h2>
             </div>
 

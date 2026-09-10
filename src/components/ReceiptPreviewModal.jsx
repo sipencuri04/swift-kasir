@@ -26,12 +26,87 @@ const ReceiptPreviewModal = ({ cart, total, change, paymentMethod, cashReceived,
 
     const handlePrint = async () => {
         try {
-            const finalCart = [...cart];
-            const dateStrFull = now.toLocaleString('id-ID');
-            await printerService.printReceipt(storeName, finalCart, total, dateStrFull, storeAddress, transactionId);
+            if (window.bluetoothSerial) {
+                const finalCart = [...cart];
+                const dateStrFull = now.toLocaleString('id-ID');
+                await printerService.printReceipt(storeName, finalCart, total, dateStrFull, storeAddress, transactionId);
+            } else {
+                printViaBrowser();
+            }
         } catch (e) {
             AlertService.info('Printer', 'Gagal mencetak struk. Pastikan printer terhubung.');
         }
+    };
+
+    const printViaBrowser = () => {
+        const printArea = document.getElementById('receipt-print-area');
+        if (!printArea) {
+            AlertService.error('Error', 'Area struk tidak ditemukan.');
+            return;
+        }
+
+        const printContent = printArea.innerHTML;
+        const printWindow = window.open('', '_blank', 'width=400,height=600');
+        
+        if (!printWindow) {
+            AlertService.error('Popup Diblokir', 'Browser Anda memblokir popup. Izinkan popup untuk mencetak struk.');
+            return;
+        }
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Print Struk</title>
+                    <style>
+                        * { box-sizing: border-box; }
+                        body { 
+                            font-family: 'Courier New', Courier, monospace; 
+                            margin: 0; 
+                            padding: 0; 
+                            color: #000 !important;
+                            background: #fff !important;
+                            width: 58mm;
+                        }
+                        @page { 
+                            size: 58mm auto;
+                            margin: 0mm;
+                        }
+                        @media print {
+                            body { 
+                                width: 58mm;
+                                margin: 0;
+                                padding: 2mm;
+                            }
+                        }
+                        /* Override dark theme styles dari app */
+                        * { 
+                            color: #000 !important; 
+                            background: transparent !important;
+                            border-color: #ccc !important;
+                            font-size: 11px !important;
+                        }
+                        h1, h2, h3, h4, strong, b { font-weight: bold !important; }
+                        svg { display: none !important; }
+                        img { display: block !important; max-width: 100% !important; }
+                    </style>
+                </head>
+                <body>
+                    <div style="width:100%; padding: 2mm; font-family: monospace; font-size: 11px; color:#000;">
+                        ${printContent}
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() {
+                                window.focus();
+                                window.print();
+                                setTimeout(function() { window.close(); }, 1000);
+                            }, 300);
+                        };
+                    </script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
     };
 
     const handleProofUpload = (e) => {
@@ -291,7 +366,7 @@ const ReceiptPreviewModal = ({ cart, total, change, paymentMethod, cashReceived,
                     )}
 
                     {/* Receipt Paper */}
-                    <div style={{
+                    <div id="receipt-print-area" style={{
                         flex: hasLeftPanel ? '1 1 300px' : undefined,
                         background: 'white',
                         color: '#111',

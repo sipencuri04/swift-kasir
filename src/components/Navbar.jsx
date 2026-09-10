@@ -32,7 +32,7 @@ const Navbar = () => {
             {isSuperuser && (
                 <NavLink to="/products" className={({ isActive }) => (isActive ? 'nav-item active' : 'nav-item')}>
                     <Package size={20} />
-                    <span>Barang</span>
+                    <span>Master</span>
                 </NavLink>
             )}
 

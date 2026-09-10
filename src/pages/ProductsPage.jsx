@@ -47,7 +47,7 @@ const ProductsPage = () => {
     const [editingId, setEditingId] = useState(null);
 
     const filteredProducts = products.filter(p =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
+        String(p.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const [productRecipes, setProductRecipes] = useState([]);
@@ -143,27 +143,8 @@ const ProductsPage = () => {
             {/* Header Area */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {activeTab && (
-                        <button 
-                            onClick={() => setActiveTab(null)}
-                            style={{ 
-                                background: 'none', 
-                                border: 'none', 
-                                cursor: 'pointer', 
-                                color: 'var(--text-main)', 
-                                padding: 8,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderRadius: '50%',
-                                transition: 'background-color 0.2s'
-                            }}
-                            onMouseOver={e => e.currentTarget.style.backgroundColor = 'var(--border-color)'}
-                            onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                        >
-                            <ArrowLeft size={20} />
-                        </button>
-                    )}
+
+
                     <div>
                         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text-main)' }}>
                             {activeTab ? menuItems.find(m => m.id === activeTab)?.name : 'Data Master'}

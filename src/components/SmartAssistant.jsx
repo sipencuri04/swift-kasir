@@ -278,6 +278,114 @@ const SmartAssistant = ({ onClose }) => {
                 }
 
                 // ---------------------------------------------------------
+                // INTENT: ANALISA MINUS (STOK / PROFIT / RUGI) - FINANCIAL LOSS ANALYZER
+                // ---------------------------------------------------------
+                if (text.match(/(minus|negatif|rugi|tekor|analisa kerugian|kenapa rugi|penyebab rugi)/)) {
+                    // Fetch real data
+                    const trans = await dbService.getTransactions();
+                    const purchases = await dbService._get('purchases');
+                    const products = await dbService.getProducts();
+
+                    const totalPendapatan = trans.reduce((acc, t) => acc + (t.total || 0), 0);
+                    const totalLaba = trans.reduce((acc, t) => acc + (t.profit || 0), 0);
+                    const totalPengeluaran = purchases.reduce((acc, p) => acc + (p.total || 0), 0);
+                    const selisih = totalPendapatan - totalPengeluaran;
+                    
+                    const status = selisih < 0 ? 'DEFISIT' : 'SURPLUS';
+                    
+                    // Root causes logic
+                    let causes = [];
+                    
+                    // Cek Produk Rugi Margin (Harga Jual < Harga Modal)
+                    const rugiMargin = products.filter(p => p.price < (p.capital || 0));
+                    if (rugiMargin.length > 0) {
+                        causes.push(`- Rugi Margin: Terdapat produk yang Harga Jualnya lebih murah dari Modal. Ini langsung menggerus profit (keuntungan) Anda setiap kali terjual.`);
+                    }
+
+                    // Cek Diskon / Laba Minus di Transaksi
+                    const transaksiRugi = trans.filter(t => t.profit < 0);
+                    if (transaksiRugi.length > 0) {
+                        causes.push(`- Diskon Berlebihan / Transaksi Rugi: Ditemukan ${transaksiRugi.length} nota transaksi dengan profit negatif/minus.`);
+                    }
+                    
+                    // Cek Stok Minus
+                    const minusStockProducts = products.filter(p => p.stock < 0);
+                    if (minusStockProducts.length > 0) {
+                        causes.push(`- Kelalaian Input (Stok Minus): Ditemukan barang dengan stok di bawah nol. Artinya fisik barang sudah terjual sebelum data Restock masuk, atau takaran resep terlalu boros.`);
+                    }
+
+                    if (totalPengeluaran > totalPendapatan) {
+                        causes.push(`- Pengeluaran Besar: Anda membeli terlalu banyak stok barang ke supplier sementara tingkat penjualan tunai masih rendah.`);
+                    }
+
+                    if (causes.length === 0) {
+                        if (status === 'SURPLUS') {
+                             causes.push(`- Secara keseluruhan keuangan sehat. Tidak ditemukan kerugian margin atau stok minus yang signifikan.`);
+                        } else {
+                             causes.push(`- Data transaksi belum cukup detail untuk menyimpulkan akar masalah.`);
+                        }
+                    }
+
+                    let tableRows = [];
+                    // Rugi margin items
+                    rugiMargin.forEach(p => {
+                        tableRows.push({ name: p.name, masalah: 'Rugi Margin', jual: formatCurrency(p.price), modal: formatCurrency(p.capital), sisa: `${p.stock} pcs` });
+                    });
+                    // Stok minus items
+                    minusStockProducts.forEach(p => {
+                        if(!rugiMargin.find(r => r.id === p.id)) {
+                            tableRows.push({ name: p.name, masalah: 'Stok Minus', jual: formatCurrency(p.price), modal: formatCurrency(p.capital || 0), sisa: `${p.stock} pcs` });
+                        }
+                    });
+                    // Transaksi rugi items
+                    transaksiRugi.slice(0, 5).forEach(t => {
+                        let itemNames = [];
+                        try {
+                            let items = typeof t.items === 'string' ? JSON.parse(t.items) : t.items;
+                            if(Array.isArray(items)) items.forEach(i => itemNames.push(i.name));
+                        } catch(e){}
+                        const tTimeStr = new Date(t.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                        tableRows.push({ name: `Nota: ${itemNames.join(', ')}`, masalah: 'Transaksi Rugi', jual: '-', modal: '-', sisa: `Rugi ${formatCurrency(t.profit)} (${tTimeStr})` });
+                    });
+
+                    const msg1 = `📊 RINGKASAN\n-----------------------------------------\nStatus Keuangan : ${status}\nPendapatan      : ${formatCurrency(totalPendapatan)}\nPengeluaran     : ${formatCurrency(totalPengeluaran)}\nSelisih         : ${formatCurrency(selisih)}\n\n📌 PENYEBAB UTAMA\n-----------------------------------------\n${causes.join('\n\n')}`;
+
+                    const TableComponent = (
+                        <div style={{ marginTop: 5, overflowX: 'auto', background: 'var(--bg-color)', borderRadius: 12, padding: 4, border: '1px solid var(--border-color)' }}>
+                            <h4 style={{ margin: '10px 10px', color: 'var(--text-main)', fontSize: 14 }}>📋 Rincian Item Bermasalah</h4>
+                            {tableRows.length > 0 ? (
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left', color: 'var(--text-main)' }}>
+                                    <thead>
+                                        <tr style={{ background: 'var(--primary)', color: 'white' }}>
+                                            <th style={{ padding: '10px 12px', borderTopLeftRadius: 8 }}>Nama / Nota</th>
+                                            <th style={{ padding: '10px 12px' }}>Masalah</th>
+                                            <th style={{ padding: '10px 12px' }}>Harga Jual</th>
+                                            <th style={{ padding: '10px 12px' }}>Modal (HPP)</th>
+                                            <th style={{ padding: '10px 12px', borderTopRightRadius: 8 }}>Sisa / Rugi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {tableRows.map((r, i) => (
+                                            <tr key={i} style={{ borderBottom: i === tableRows.length - 1 ? 'none' : '1px solid var(--border-color)', background: i % 2 === 0 ? 'transparent' : 'rgba(128,128,128,0.05)' }}>
+                                                <td style={{ padding: '10px 12px', fontWeight: '600' }}>{r.name}</td>
+                                                <td style={{ padding: '10px 12px', color: r.masalah === 'Stok Minus' ? '#ef4444' : r.masalah === 'Rugi Margin' ? '#f59e0b' : '#3b82f6', fontWeight: 'bold' }}>{r.masalah}</td>
+                                                <td style={{ padding: '10px 12px' }}>{r.jual}</td>
+                                                <td style={{ padding: '10px 12px' }}>{r.modal}</td>
+                                                <td style={{ padding: '10px 12px' }}>{r.sisa}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <p style={{ margin: '10px', fontSize: 13 }}>Tidak ada item bermasalah ditemukan.</p>
+                            )}
+                        </div>
+                    );
+
+                    return [msg1, TableComponent];
+                }
+
+                // ---------------------------------------------------------
                 // INTENT: CEK STOK SPESIFIK PRODUK (cek stok [nama barang])
                 // ---------------------------------------------------------
                 const stockMatch = text.match(/(cek stok|stok|berapa sisa|sisa stok)\s+(.+)/i);
@@ -417,28 +525,83 @@ const SmartAssistant = ({ onClose }) => {
                 const products = await dbService.getProducts();
                 const lowStock = products.filter(p => p.stock <= 10).map(p => `${p.name} (sisa ${p.stock})`).join(', ');
                 
-                const promptContext = `Anda adalah Asisten Pintar resmi untuk aplikasi "Swift Kasir" (sebuah aplikasi Point of Sale / Kasir Offline Desktop Desktop premium). 
-Tugas Anda adalah membantu pengguna menganalisis data toko mereka serta memandu mereka cara menggunakan aplikasi Swift Kasir dengan ramah, profesional, dan akurat (jangan mengarang fitur yang tidak ada).
+                // Kumpulkan data finansial tambahan untuk Analisa Kerugian (Financial Loss Analyzer)
+                const trans = await dbService.getTransactions();
+                const purchases = await dbService._get('purchases');
+                
+                const totalPendapatan = trans.reduce((acc, t) => acc + (t.total || 0), 0);
+                const totalLaba = trans.reduce((acc, t) => acc + (t.profit || 0), 0);
+                const totalPengeluaran = purchases.reduce((acc, p) => acc + (p.total || 0), 0);
+                const nilaiPersediaan = products.reduce((acc, p) => acc + ((p.stock || 0) * (p.capital || p.price || 0)), 0);
+                
+                let rugiTxDetails = [];
+                trans.filter(t => t.profit < 0).slice(0,5).forEach(t => {
+                    try {
+                        let items = typeof t.items === 'string' ? JSON.parse(t.items) : t.items;
+                        let itemNames = Array.isArray(items) ? items.map(i => i.name).join(', ') : 'Unknown';
+                        const tDate = new Date(t.date);
+                        rugiTxDetails.push(`Tgl: ${tDate.toLocaleDateString('id-ID')} Jam: ${tDate.toLocaleTimeString('id-ID')}, Barang: ${itemNames}, Rugi: ${t.profit}`);
+                    } catch(e){}
+                });
+                const txRugiGem = rugiTxDetails.join(' | ');
+
+                const slowMoving = products.filter(p => p.stock > 50).slice(0, 5).map(p => p.name).join(', ');
+                const fastMoving = products.filter(p => p.stock < 10).slice(0, 5).map(p => p.name).join(', ');
+                const rugiMarginGem = products.filter(p => p.price < (p.capital || 0)).slice(0, 5).map(p => `${p.name} (Jual ${p.price}, Modal ${p.capital})`).join('; ');
+                const stokMinusGem = products.filter(p => p.stock < 0).slice(0, 5).map(p => `${p.name} (Stok ${p.stock})`).join('; ');
+
+                const promptContext = `Anda adalah Asisten Pintar resmi untuk aplikasi "Swift Kasir" dan bertindak sebagai **AI Financial Analyst**.
 
 Berikut adalah detail Menu & Fitur yang ada di Swift Kasir untuk memandu pengguna:
-1. **Dashboard**: Menampilkan ringkasan statistik toko seperti omset, profit, jumlah produk, transaksi hari ini, serta grafik penjualan terbaru.
-2. **Transaksi (POS)**: Halaman utama kasir untuk melayani penjualan. Pengguna bisa scan barcode barang, input nama produk, mengatur diskon, memilih metode bayar (Tunai/QRIS), dan mencetak struk belanja ke printer thermal.
-3. **Produk (Barang)**: Halaman manajemen inventaris produk. Pengguna dapat menambah/mengedit produk, mengelola stok, membuat barcode dengan Barcode Generator bawaan, serta mencetak Label Harga produk.
-4. **Pembelian / Restok**: Tempat mencatat barang masuk dari supplier dan mencatat riwayat restok barang untuk memperbarui stok otomatis.
-5. **Riwayat Transaksi**: Melihat daftar nota transaksi penjualan yang lalu, melakukan cetak ulang struk, atau melakukan pembatalan transaksi.
-6. **Laporan**: Analisis keuangan toko yang lengkap (harian, bulanan, tahunan), grafik performa, serta tombol untuk mengekspor laporan transaksi ke format Excel atau PDF.
-7. **Pengaturan**: Pengaturan nama toko, alamat/telepon pada struk, konfigurasi Printer Thermal, fitur Backup & Restore database, Impor produk dari Excel, serta Aktivasi Lisensi Aplikasi.
+1. **Dashboard**: Menampilkan ringkasan statistik toko.
+2. **Transaksi (POS)**: Halaman utama kasir.
+3. **Produk (Barang)**: Manajemen inventaris.
+4. **Pembelian / Restok**: Tempat mencatat barang masuk dari supplier.
+5. **Riwayat Transaksi**: Riwayat nota penjualan.
+6. **Laporan**: Analisis keuangan toko.
+7. **Pengaturan**: Pengaturan aplikasi.
 
-Data toko hari ini (${todayStr}):
-- Omset Hari Ini: Rp ${stats.total.toLocaleString('id-ID')}
-- Profit Hari Ini: Rp ${stats.profit.toLocaleString('id-ID')}
-- Total Transaksi: ${stats.count}
-- Barang stok kritis (<=10): ${lowStock || 'Semua aman di atas 10 pcs'}
+---
+## DATA KEUANGAN TOKO SAAT INI (Gunakan data ini untuk analisis)
+- Total Pendapatan (Omzet Keseluruhan): Rp ${totalPendapatan.toLocaleString('id-ID')}
+- Total Pembelian Stok (Pengeluaran Keseluruhan): Rp ${totalPengeluaran.toLocaleString('id-ID')}
+- Total Laba/Profit Terestimasi: Rp ${totalLaba.toLocaleString('id-ID')}
+- Nilai Persediaan Barang (Aset Fisik): Rp ${nilaiPersediaan.toLocaleString('id-ID')}
+- Penjualan Hari Ini: Rp ${stats.total.toLocaleString('id-ID')} (Profit Harian: Rp ${stats.profit.toLocaleString('id-ID')})
+- Barang Slow Moving (Stok > 50): ${slowMoving || '-'}
+- Barang Fast Moving (Stok < 10): ${fastMoving || '-'}
+- Produk Rugi Margin (Harga Jual < Modal): ${rugiMarginGem || 'Tidak Ada'}
+- Produk Stok Minus (Fisik bocor / Telat input): ${stokMinusGem || 'Tidak Ada'}
+- Produk Terlibat Transaksi Rugi/Diskon Berlebih: ${txRugiGem || 'Tidak Ada'}
 
-Instruksi Respon:
-- Jika pengguna bertanya tentang data keuangan/stok toko, gunakan data toko di atas.
-- Jika pengguna bertanya tentang cara menggunakan fitur (misal: cetak struk, backup data, buat barcode), arahkan ke menu Swift Kasir yang sesuai di atas.
-- Jangan mengarang fitur yang tidak tertulis di atas. Jawablah secara ringkas, jelas, dan bersahabat.
+---
+## AI SYSTEM PROMPT – Financial Loss Analyzer
+Tugas Anda adalah menganalisis kondisi keuangan usaha berdasarkan data di atas dan memberikan jawaban objektif.
+
+1. Tentukan Kondisi Keuangan:
+- Jika Pendapatan < Pengeluaran, status: DEFISIT.
+- Jika Pendapatan > Pengeluaran, status: SURPLUS.
+
+2. Jika pengguna meminta analisa keuntungan/kerugian/minus, WAJIB gunakan Format Jawaban berikut:
+### Ringkasan
+- Status Keuangan: [DEFISIT / SURPLUS]
+- Pendapatan: [Angka]
+- Pengeluaran: [Angka]
+- Selisih: [Angka]
+
+### Penyebab Utama
+- [Sebutkan penyebab 1]
+- [Sebutkan penyebab 2]
+
+### Analisis
+[Jelaskan penyebab menggunakan bahasa yang mudah dipahami, berikan persentase kontribusi jika memungkinkan]
+
+### Rekomendasi
+[Berikan maksimal 5 rekomendasi praktis]
+
+Aturan:
+- Jangan mengarang angka. Gunakan angka di bagian DATA KEUANGAN TOKO SAAT INI.
+- Jika pengguna hanya bertanya sapaan atau cara penggunaan aplikasi, jawab biasa tanpa menggunakan format Analisis di atas.
 
 Pertanyaan pengguna: ${text}`;
 
@@ -473,7 +636,15 @@ Pertanyaan pengguna: ${text}`;
         reply = botType === 'gemini' ? await getGeminiReply(text) : await getOfflineReply(text);
 
         setTimeout(() => {
-            setMessages(prev => [...prev, { text: reply, sender: 'bot' }]);
+            if (Array.isArray(reply)) {
+                setMessages(prev => {
+                    let newMsgs = [...prev];
+                    reply.forEach(r => newMsgs.push({ text: r, sender: 'bot' }));
+                    return newMsgs;
+                });
+            } else {
+                setMessages(prev => [...prev, { text: reply, sender: 'bot' }]);
+            }
         }, 600); // Simulate typing delay
     };
 

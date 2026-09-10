@@ -43,24 +43,33 @@ jobs:
       - name: Sync web assets to iOS
         run: npx cap sync ios
 
-      - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
+      - name: Check Xcode version
+        run: xcodebuild -version
 
-      - name: Install CocoaPods
+      - name: Resolve CocoaPods (if Podfile exists)
         run: |
-          sudo gem install cocoapods
-          cd ios/App
-          pod install --repo-update
+          if [ -f "ios/App/Podfile" ]; then
+            cd ios/App
+            pod install --repo-update
+            cd ../..
+          else
+            echo "Using Swift Package Manager (SPM) bundled with Capacitor"
+          fi
 
       - name: Build Xcode project (Archive)
         run: |
+          if [ -d "ios/App/App.xcworkspace" ]; then
+            BUILD_TARGET="-workspace ios/App/App.xcworkspace"
+          else
+            BUILD_TARGET="-project ios/App/App.xcodeproj"
+          fi
+
           xcodebuild \
-            -workspace ios/App/App.xcworkspace \
+            $BUILD_TARGET \
             -scheme App \
             -configuration Release \
             -sdk iphoneos \
+            -destination "generic/platform=iOS" \
             -archivePath $PWD/build/App.xcarchive \
             archive \
             CODE_SIGNING_ALLOWED=NO \

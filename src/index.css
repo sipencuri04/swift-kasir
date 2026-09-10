@@ -276,24 +276,25 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 
-/* Modern Floating Navbar */
+/* Bottom Navbar — menempel di bawah layar */
 .bottom-nav {
   position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 94%;
-  max-width: 400px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: 100%;
   height: 64px;
   background: var(--card-bg);
-  border-radius: 20px;
+  border-radius: 0;
   display: flex;
   justify-content: space-evenly;
   align-items: center;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-  border: 1px solid var(--border-color);
+  box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.12);
+  border-top: 1px solid var(--border-color);
   z-index: 1000;
-  padding: 0 16px;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .app-wrapper {
@@ -388,7 +389,7 @@ input[type="number"]::-webkit-inner-spin-button {
   /* No line for fab */
 }
 
-@media (min-width: 768px), (orientation: landscape) {
+@media (min-width: 768px) and (orientation: landscape), (min-width: 1024px) {
   .bottom-nav {
     left: 0;
     top: 0;
@@ -737,7 +738,7 @@ jeep-sqlite {
 }
 
 /* ── POS Layout: Flexbox ───────────────────────────────────────────────── */
-@media (min-width: 768px), (orientation: landscape) {
+@media (orientation: landscape) {
 
   .pos-page-container {
     height: 100dvh !important;
@@ -768,7 +769,6 @@ jeep-sqlite {
     overflow-y: auto;
     overflow-x: hidden;
   }
-
   /* Panel keranjang — ukuran adaptif, scroll jika konten melebihi */
   .pos-sidebar {
     flex: 0 0 280px;        /* medium screen: 280px */
@@ -855,73 +855,31 @@ jeep-sqlite {
   }
 }
 
-/* Search bar — wrap agar tidak overflow */
+/* POS Header — search bar, refresh btn, camera btn */
 .pos-header-flex {
   display: flex;
   gap: 10px;
   align-items: center;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+  margin-bottom: 16px;
+  flex-wrap: nowrap;
 }
 
 .sticky-search {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: var(--bg-color); /* match background so it covers items */
+  background: var(--bg-color);
   padding-bottom: 16px;
   margin-bottom: 0 !important;
 }
 
-.pos-search-box { flex: 1 1 180px; min-width: 0; }
-.pos-camera-btn { flex-shrink: 0; }
-
-/* Image styling */
-.product-img-container {
-  width: 100%;
-  aspect-ratio: 1/1;
-  border-radius: 4px;
-  background: var(--input-bg);
-  margin-bottom: 4px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border-color);
-}
-.product-img-container img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.product-img-container .placeholder {
-  font-size: 20px;
-  opacity: 0.5;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-@media (min-width: 768px), (orientation: landscape) {
-  .dashboard-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* POS Header refinement */
-.pos-header-flex {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 16px;
-}
+/* Search input — mengisi sisa ruang */
 .pos-search-box {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
 }
+
+/* Tombol kamera */
 .pos-camera-btn {
   flex-shrink: 0;
 }
@@ -932,16 +890,10 @@ jeep-sqlite {
   padding: 10px 16px !important;
   font-size: 13px !important;
   width: auto !important;
-  height: 48px;
+  height: 44px;
   margin-bottom: 0 !important;
 }
 
-@media (max-width: 767px) {
-  .pos-header-flex {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
 
 /* POS Product List View */
 .product-list {
@@ -1015,6 +967,162 @@ jeep-sqlite {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+/* View Toggle Buttons */
+.view-toggle-group {
+  display: flex;
+  background: var(--card-bg);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.view-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-toggle-btn.active {
+  background: var(--primary);
+  color: white;
+}
+
+.view-toggle-btn:hover:not(.active) {
+  background: var(--input-bg);
+}
+
+/* POS Product List View (New Design) */
+.pos-product-list-view {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 80px;
+  width: 100%;
+}
+
+.pos-list-card {
+  display: flex;
+  align-items: center;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px 16px;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pos-list-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.pos-list-card.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pos-list-card .img-wrapper {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  background: var(--input-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  font-size: 24px;
+}
+
+.pos-list-card .img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pos-list-card .info {
+  flex: 2;
+  min-width: 0;
+}
+
+.pos-list-card .info .name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.pos-list-card .info .category {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.pos-list-card .stats-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 80px;
+}
+
+.pos-list-card .stats-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.pos-list-card .stats-value {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.pos-list-card .stats-value.sku {
+  color: var(--text-main);
+}
+
+.pos-list-card .stats-value.price {
+  color: var(--primary);
+}
+
+.pos-list-card .stats-value.stock {
+  color: var(--success);
+}
+
+.pos-list-card .add-btn-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--success);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pos-list-card .add-btn-circle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
 }
 
 /* POS Grid View */

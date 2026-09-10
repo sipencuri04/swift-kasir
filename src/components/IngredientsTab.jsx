@@ -10,7 +10,7 @@ const IngredientsTab = () => {
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [showRestockModal, setShowRestockModal] = useState(null); // stores the ingredient object to restock
-    const [restockForm, setRestockForm] = useState({ qty: '', cost: '', supplierId: '' });
+    const [restockForm, setRestockForm] = useState({ qty: '', inputUnit: '', cost: '', supplierId: '' });
 
     const [form, setForm] = useState({
         name: '',
@@ -91,20 +91,29 @@ const IngredientsTab = () => {
         e.preventDefault();
         if (!showRestockModal) return;
 
-        const qty = parseFloat(restockForm.qty) || 0;
-        const cost = parseFloat(restockForm.cost) || 0;
-        const totalCost = qty * cost;
+        const inputQty = parseFloat(restockForm.qty) || 0;
+        const inputCost = parseFloat(restockForm.cost) || 0;
+        const totalCost = inputQty * inputCost;
 
-        if (qty <= 0) {
+        if (inputQty <= 0) {
             AlertService.error('Gagal', 'Jumlah restok harus lebih dari 0.');
             return;
         }
 
+        let convertedQty = inputQty;
+        const baseUnit = showRestockModal.unit;
+        const inputUnit = restockForm.inputUnit || baseUnit;
+
+        if (inputUnit === 'kg' && baseUnit === 'gram') convertedQty = inputQty * 1000;
+        else if (inputUnit === 'gram' && baseUnit === 'kg') convertedQty = inputQty / 1000;
+        else if (inputUnit === 'liter' && baseUnit === 'ml') convertedQty = inputQty * 1000;
+        else if (inputUnit === 'ml' && baseUnit === 'liter') convertedQty = inputQty / 1000;
+
         const purchaseItem = {
             id: showRestockModal.id,
             name: showRestockModal.name,
-            qty: qty,
-            cost: cost,
+            qty: convertedQty,
+            cost: convertedQty > 0 ? totalCost / convertedQty : 0,
             isIngredient: true
         };
 
@@ -114,9 +123,9 @@ const IngredientsTab = () => {
             totalCost
         );
 
-        AlertService.success('Berhasil', `Stok ${showRestockModal.name} berhasil ditambahkan sebanyak ${qty} ${showRestockModal.unit}.`);
+        AlertService.success('Berhasil', `Stok ${showRestockModal.name} berhasil ditambahkan sebanyak ${inputQty} ${inputUnit}.`);
         setShowRestockModal(null);
-        setRestockForm({ qty: '', cost: '', supplierId: '' });
+        setRestockForm({ qty: '', inputUnit: '', cost: '', supplierId: '' });
         loadData();
     };
 
@@ -124,6 +133,7 @@ const IngredientsTab = () => {
         setShowRestockModal(ing);
         setRestockForm({
             qty: '',
+            inputUnit: ing.unit,
             cost: String(ing.buyPrice || 0),
             supplierId: ing.supplierId ? String(ing.supplierId) : ''
         });
@@ -299,27 +309,39 @@ const IngredientsTab = () => {
                             Restok bahan: <b style={{ color: 'var(--text-main)' }}>{showRestockModal.name}</b> (Stok: {showRestockModal.stock} {showRestockModal.unit})
                         </p>
                         <form onSubmit={handleRestockSubmit}>
-                            <div className="input-group">
-                                <label>Jumlah Tambah ({showRestockModal.unit})</label>
-                                <input 
-                                    type="number" 
-                                    step="any" 
-                                    required 
-                                    autoFocus
-                                    value={restockForm.qty} 
-                                    onChange={e => setRestockForm({ ...restockForm, qty: e.target.value })} 
-                                    placeholder="Contoh: 1000" 
-                                />
+                            <div className="grid-2">
+                                <div className="input-group">
+                                    <label>Jumlah Tambah</label>
+                                    <input 
+                                        type="number" 
+                                        step="any" 
+                                        required 
+                                        autoFocus
+                                        value={restockForm.qty} 
+                                        onChange={e => setRestockForm({ ...restockForm, qty: e.target.value })} 
+                                        placeholder="Contoh: 10" 
+                                    />
+                                </div>
+                                <div className="input-group">
+                                    <label>Satuan Restok</label>
+                                    <select 
+                                        className="modern-select" 
+                                        value={restockForm.inputUnit} 
+                                        onChange={e => setRestockForm({ ...restockForm, inputUnit: e.target.value })}
+                                    >
+                                        {units.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}
+                                    </select>
+                                </div>
                             </div>
                             <div className="input-group">
-                                <label>Harga Beli per Unit (Rp)</label>
+                                <label>Harga Beli per {restockForm.inputUnit || showRestockModal.unit} (Rp)</label>
                                 <input 
                                     type="number" 
                                     step="any" 
                                     required 
                                     value={restockForm.cost} 
                                     onChange={e => setRestockForm({ ...restockForm, cost: e.target.value })} 
-                                    placeholder="Contoh: 15" 
+                                    placeholder="Contoh: 16000" 
                                 />
                             </div>
                             <div className="input-group">

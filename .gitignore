@@ -22,3 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+.env*.local
+.env
+
+# Keystores & Sensitive signing keys
+*.jks
+*.keystore
+android/gradle.properties.local
+
+# Android APK builds
+*.apk
+android/jdk-21*
+android/jdk-21/
+
+# Backups & Netlify
+*.bak
+.netlify/

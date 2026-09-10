@@ -1,12 +1,54 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef, Component } from 'react';
+
+// ─── Error Boundary ───────────────────────────────────────────
+class ActivationErrorBoundary extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, errorMsg: '' };
+    }
+    static getDerivedStateFromError(err) {
+        return { hasError: true, errorMsg: err?.message || String(err) };
+    }
+    componentDidCatch(err, info) {
+        console.error('[ActivationPage] Error:', err, info);
+    }
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{
+                    minHeight: '100vh', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', background: 'var(--bg-color)', padding: 24,
+                }}>
+                    <div className="card" style={{ maxWidth: 400, width: '100%', textAlign: 'center', padding: 32 }}>
+                        <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+                        <h2 style={{ marginBottom: 8, color: '#ef4444' }}>Terjadi Kesalahan</h2>
+                        <p className="text-muted" style={{ fontSize: 13, marginBottom: 20, lineHeight: 1.6 }}>
+                            {this.state.errorMsg || 'Proses aktivasi mengalami error.'}
+                        </p>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => window.location.reload()}
+                            style={{ width: '100%' }}
+                        >
+                            Muat Ulang Aplikasi
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
 import { licenseService } from '../services/LicenseService';
 import { dbService } from '../services/DatabaseService';
 import { AlertService } from '../utils/AlertService';
 import QRActivationScanner from '../components/QRActivationScanner';
+import { useAuth } from '../components/AuthContext';
 import {
     QrCode, Key, CheckCircle, Copy, MapPin, Store,
     Navigation, User, Phone, ArrowRight, ArrowLeft,
     Loader, ShieldCheck, AlertCircle, ChevronRight,
+    Sparkles, LogIn, Eye, EyeOff,
 } from 'lucide-react';
 import SwiftLogo from '../assets/Swift_Kasir.png';
 
@@ -31,6 +73,7 @@ const STATUS_STYLE = {
 const ActivationPage = ({ onSuccess }) => {
     const [step, setStep]             = useState(STEP.SCANNING); // Langsung buka kamera
     const [deviceId, setDeviceId]     = useState('');
+    const { login } = useAuth();
 
     // Token state
     const [scannedToken, setScannedToken] = useState('');
@@ -38,22 +81,95 @@ const ActivationPage = ({ onSuccess }) => {
     const [tokenStatus, setTokenStatus]   = useState(null); // null | 'valid' | 'invalid'
     const [tokenError, setTokenError]     = useState('');
 
-    // Form registrasi
-    const [storeName, setStoreName]       = useState('');
-    const [storeAddress, setStoreAddress] = useState('');
-    const [coordinates, setCoordinates]   = useState(null);
-    const [username, setUsername]         = useState('');
-    const [password, setPassword]         = useState('');
-    const [phone, setPhone]               = useState('');
-
-    const [isLocating, setIsLocating]   = useState(false);
     const [isLoading, setIsLoading]     = useState(false);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [error, setError]             = useState('');
-    const [copySuccess, setCopySuccess] = useState(false);
+    const [generatedAccount, setGeneratedAccount] = useState(null);
+    const [copySuccess, setCopySuccess]       = useState({ user: false, pass: false });
+    const [copyDeviceIdSuccess, setCopyDeviceIdSuccess] = useState(false);
+    const [showPassword, setShowPassword]     = useState(true); // default tampil
 
     useEffect(() => {
         licenseService.getDeviceId().then(id => setDeviceId(id));
     }, []);
+
+    // ── Auto Activate & Generate Account ─────────────────────
+    const autoActivateAndCreateAccount = async (token) => {
+        setIsLoading(true);
+        try {
+            console.log('[Activation] Memulai auto-aktivasi dengan token:', token);
+            const existingUsers = await dbService.getUsers();
+            console.log('[Activation] Users saat ini:', existingUsers.length);
+
+            let randomUser = 'admin' + Math.floor(1000 + Math.random() * 9000);
+            while (existingUsers.find(u => u.username === randomUser)) {
+                randomUser = 'admin' + Math.floor(1000 + Math.random() * 9000);
+            }
+            const randomPass = Math.floor(100000 + Math.random() * 900000).toString();
+            const defaultStoreName = 'Toko Baru';
+
+            console.log('[Activation] Membuat user baru:', randomUser);
+            await dbService.createUser({
+                username: randomUser,
+                password: randomPass,
+                role: 'superuser',
+                name: defaultStoreName,
+            });
+
+            console.log('[Activation] Mengaktifkan lisensi QR...');
+            await licenseService.activateWithQRToken(token, {
+                storeName: defaultStoreName,
+                storeAddress: 'Belum diatur',
+                coordinates: null,
+                username: randomUser,
+                phone: '',
+            });
+
+            localStorage.setItem('kasir_store_info', JSON.stringify({
+                storeName: defaultStoreName,
+                storeAddress: 'Belum diatur',
+                phone: '',
+                coordinates: null,
+            }));
+
+            console.log('[Activation] Berhasil! Akun:', randomUser, '/', randomPass);
+            setGeneratedAccount({ username: randomUser, password: randomPass });
+            setStep(STEP.SUCCESS);
+
+            // ── Notifikasi Pop-up Aktivasi Berhasil ──
+            await AlertService.success(
+                '🎉 Aktivasi Berhasil!',
+                '',
+                `<div style="text-align:left; font-size:14px; line-height:1.8">
+                    <p style="margin:0 0 12px; color:#94a3b8">Lisensi Swift Kasir Anda telah aktif.<br>Simpan kredensial berikut dengan aman:</p>
+                    <div style="background:rgba(14,165,233,0.1); border:1px solid rgba(14,165,233,0.3); border-radius:12px; padding:14px">
+                        <div style="margin-bottom:8px">
+                            <span style="color:#94a3b8; font-size:12px">Username</span><br>
+                            <code style="color:#38bdf8; font-size:18px; font-weight:700">${randomUser}</code>
+                        </div>
+                        <div>
+                            <span style="color:#94a3b8; font-size:12px">Password</span><br>
+                            <code style="color:#10b981; font-size:18px; font-weight:700">${randomPass}</code>
+                        </div>
+                    </div>
+                    <p style="margin:10px 0 0; font-size:11px; color:#fbbf24">⚠️ Screenshot atau catat password ini sekarang!</p>
+                </div>`
+            );
+        } catch (err) {
+            console.error('[Activation] GAGAL:', err?.message || err, err?.stack);
+            setTokenError('Terjadi kesalahan saat aktivasi: ' + (err?.message || String(err)));
+            setTokenStatus('invalid');
+            setStep(STEP.LANDING);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // ── Ref untuk autoActivate agar useCallback tidak stale ──
+    const autoActivateRef = useRef(autoActivateAndCreateAccount);
+    useEffect(() => {
+        autoActivateRef.current = autoActivateAndCreateAccount;
+    });
 
     // ── Setelah QR ter-scan ──────────────────────────────────
     const handleQRScanned = useCallback(async (rawText) => {
@@ -65,15 +181,16 @@ const ActivationPage = ({ onSuccess }) => {
             if (result.valid) {
                 setScannedToken(result.token);
                 setTokenStatus('valid');
-                setStep(STEP.REGISTER);
+                // Pakai ref agar selalu memanggil versi terbaru
+                await autoActivateRef.current(result.token);
             } else {
                 setTokenError(result.reason || 'QR tidak valid.');
                 setTokenStatus('invalid');
                 setStep(STEP.LANDING);
             }
         } catch (e) {
-            console.error(e);
-            setTokenError('Terjadi kesalahan saat memvalidasi QR.');
+            console.error('[handleQRScanned] error:', e);
+            setTokenError('Terjadi kesalahan: ' + (e?.message || String(e)));
             setTokenStatus('invalid');
             setStep(STEP.LANDING);
         }
@@ -91,7 +208,7 @@ const ActivationPage = ({ onSuccess }) => {
             if (result.valid) {
                 setScannedToken(result.token);
                 setTokenStatus('valid');
-                setStep(STEP.REGISTER);
+                await autoActivateAndCreateAccount(result.token);
             } else {
                 setTokenError(result.reason || 'Kode tidak valid.');
                 setTokenStatus('invalid');
@@ -103,103 +220,39 @@ const ActivationPage = ({ onSuccess }) => {
         }
     };
 
-    // ── Deteksi GPS ───────────────────────────────────────────
-    const handleDetectGPS = async () => {
-        setIsLocating(true);
-        setError('');
-
-        if (!navigator.geolocation) {
-            setError('Browser Anda tidak mendukung GPS.');
-            setIsLocating(false);
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-                setCoordinates({
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                });
-                setIsLocating(false);
-            },
-            (err) => {
-                let msg = 'Gagal mendeteksi lokasi.';
-                if (err.code === 1) msg = 'Izin lokasi ditolak. Aktifkan izin lokasi di pengaturan browser.';
-                else if (err.code === 2) msg = 'Sinyal GPS tidak tersedia. Pastikan GPS aktif.';
-                else if (err.code === 3) msg = 'Timeout. Coba lagi di area dengan sinyal lebih baik.';
-                setError(msg);
-                setIsLocating(false);
-            },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
-    };
-
-    // ── Submit registrasi ─────────────────────────────────────
-    const handleRegister = async (e) => {
-        e.preventDefault();
-        setError('');
-
-        if (!storeName.trim())    return setError('Nama toko wajib diisi.');
-        if (!storeAddress.trim()) return setError('Alamat toko wajib diisi.');
-        if (!username.trim())     return setError('Username wajib diisi.');
-        if (!password.trim())     return setError('Password wajib diisi.');
-        if (!coordinates)         return setError('Titik lokasi toko wajib ditentukan. Klik "Lokasi Saat Ini".');
-
-        setIsLoading(true);
-
-        try {
-            // 1. Buat akun user di database lokal
-            const existingUsers = await dbService.getUsers();
-            const usernameExists = existingUsers.find(u => u.username === username.trim());
-            if (usernameExists) {
-                setError('Username sudah dipakai. Pilih username lain.');
-                setIsLoading(false);
-                return;
-            }
-
-            await dbService.createUser({
-                username: username.trim(),
-                password: password,
-                role: 'superuser',
-                name: storeName.trim(),
-            });
-
-            // 2. Aktivasi lisensi QR + simpan lokal
-            await licenseService.activateWithQRToken(scannedToken, {
-                storeName: storeName.trim(),
-                storeAddress: storeAddress.trim(),
-                coordinates,
-                username: username.trim(),
-                phone: phone.trim(),
-            });
-
-            // 3. Simpan info toko ke localStorage (bisa dipakai di Settings)
-            localStorage.setItem('kasir_store_info', JSON.stringify({
-                storeName: storeName.trim(),
-                storeAddress: storeAddress.trim(),
-                phone: phone.trim(),
-                coordinates,
-            }));
-
-            setStep(STEP.SUCCESS);
-
-            setTimeout(async () => {
-                await AlertService.success('Aktivasi Berhasil! 🎉', `Selamat datang di Swift Kasir, ${storeName}!`);
-                window.location.reload();
-            }, 1500);
-
-        } catch (err) {
-            console.error(err);
-            setError('Terjadi kesalahan saat aktivasi. Coba lagi.');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const copyDeviceId = () => {
-        navigator.clipboard.writeText(deviceId);
-        setCopySuccess(true);
-        setTimeout(() => setCopySuccess(false), 2000);
+        navigator.clipboard.writeText(deviceId).then(() => {
+            setCopyDeviceIdSuccess(true);
+            setTimeout(() => setCopyDeviceIdSuccess(false), 2000);
+        }).catch(e => console.warn('Copy failed:', e));
+    };
+
+    const copyToClipboard = (text, field) => {
+        navigator.clipboard.writeText(text);
+        setCopySuccess(prev => ({ ...prev, [field]: true }));
+        setTimeout(() => setCopySuccess(prev => ({ ...prev, [field]: false })), 2000);
+    };
+
+    // ── Auto Login setelah aktivasi ───────────────────────────
+    const handleLoginNow = async () => {
+        if (!generatedAccount) return;
+        setIsLoggingIn(true);
+        try {
+            const ok = await login(generatedAccount.username, generatedAccount.password);
+            if (ok) {
+                // Trigger parent callback agar App.jsx tahu sudah aktif
+                if (onSuccess) onSuccess();
+                // Refresh halaman agar routing berjalan normal
+                window.location.reload();
+            } else {
+                setError('Gagal login otomatis. Silakan login secara manual.');
+            }
+        } catch (e) {
+            console.error(e);
+            setError('Terjadi kesalahan saat login.');
+        } finally {
+            setIsLoggingIn(false);
+        }
     };
 
     // ═══════════════════════════════════════════════════════════
@@ -308,7 +361,7 @@ const ActivationPage = ({ onSuccess }) => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <code style={{ fontSize: 13, fontWeight: 'bold', color: 'var(--accent)', letterSpacing: 1 }}>{deviceId}</code>
                             <button type="button" className="btn-icon" onClick={copyDeviceId} title="Salin ID">
-                                {copySuccess ? <CheckCircle size={16} color="var(--success)" /> : <Copy size={16} />}
+                                {copyDeviceIdSuccess ? <CheckCircle size={16} color="var(--success)" /> : <Copy size={16} />}
                             </button>
                         </div>
                     </div>
@@ -512,38 +565,6 @@ const ActivationPage = ({ onSuccess }) => {
                             </div>
                         </div>
 
-                        {/* GPS */}
-                        <div style={{ marginBottom: 14 }}>
-                            <label style={{ fontSize: 14, fontWeight: 600, display: 'block', marginBottom: 8 }}>
-                                Titik Lokasi Toko
-                            </label>
-                            <button
-                                type="button"
-                                id="btn-detect-gps"
-                                onClick={handleDetectGPS}
-                                disabled={isLocating}
-                                style={{
-                                    width: '100%',
-                                    padding: '11px 16px',
-                                    background: coordinates ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)',
-                                    border: `1px solid ${coordinates ? 'rgba(16,185,129,0.4)' : 'rgba(59,130,246,0.4)'}`,
-                                    borderRadius: 8,
-                                    color: coordinates ? '#10b981' : '#60a5fa',
-                                    cursor: isLocating ? 'wait' : 'pointer',
-                                    fontWeight: 600, fontSize: 14,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                    transition: 'all 0.2s',
-                                }}
-                            >
-                                <Navigation size={16} />
-                                {isLocating
-                                    ? 'Mendeteksi lokasi...'
-                                    : coordinates
-                                        ? `✅ ${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)}`
-                                        : 'Klik Lokasi Saat Ini'}
-                            </button>
-                        </div>
-
                         {/* Username */}
                         <div className="input-group" style={{ marginBottom: 14 }}>
                             <label>Username</label>
@@ -640,22 +661,210 @@ const ActivationPage = ({ onSuccess }) => {
     if (step === STEP.SUCCESS) {
         return (
             <div style={containerStyle}>
-                <div className="card" style={{ ...cardStyle, textAlign: 'center' }}>
+                <div className="card" style={{ ...cardStyle, textAlign: 'center', padding: '40px 28px' }}>
+
+                    {/* ── Ikon sukses animasi ── */}
                     <div style={{
-                        width: 80, height: 80,
+                        width: 90, height: 90,
                         borderRadius: '50%',
-                        background: 'rgba(16,185,129,0.15)',
+                        background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.05))',
+                        border: '2px solid rgba(16,185,129,0.4)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        margin: '0 auto 20px',
-                        animation: 'bounceIn 0.5s ease-out',
+                        margin: '0 auto 8px',
+                        animation: 'bounceIn 0.6s cubic-bezier(0.34,1.56,0.64,1)',
+                        boxShadow: '0 0 40px rgba(16,185,129,0.2)',
                     }}>
-                        <CheckCircle size={42} color="#10b981" />
+                        <CheckCircle size={46} color="#10b981" strokeWidth={2} />
                     </div>
-                    <h1 style={{ fontSize: 22, marginBottom: 8, color: '#10b981' }}>Aktivasi Berhasil!</h1>
-                    <p className="text-muted" style={{ fontSize: 14 }}>
-                        Swift Kasir siap digunakan. Mengalihkan ke aplikasi...
+
+                    {/* Bintang animasi */}
+                    <div style={{ fontSize: 22, marginBottom: 16, animation: 'fadeUp 0.5s 0.3s both' }}>✨</div>
+
+                    <h1 style={{
+                        fontSize: 24, marginBottom: 6, color: '#10b981',
+                        fontWeight: 800, animation: 'fadeUp 0.5s 0.2s both',
+                    }}>
+                        Aktivasi Berhasil!
+                    </h1>
+                    <p className="text-muted" style={{
+                        fontSize: 14, marginBottom: 28, lineHeight: 1.7,
+                        animation: 'fadeUp 0.5s 0.3s both',
+                    }}>
+                        🎉 Selamat! Lisensi Swift Kasir Anda telah aktif.<br />
+                        Akun admin telah dibuat otomatis untuk Anda.
                     </p>
-                    <style>{`@keyframes bounceIn { 0%{transform:scale(0.5);opacity:0} 70%{transform:scale(1.1)} 100%{transform:scale(1);opacity:1} }`}</style>
+
+                    {/* ── Kartu Kredensial ── */}
+                    {generatedAccount && (
+                        <div style={{
+                            background: 'linear-gradient(135deg, rgba(14,165,233,0.08), rgba(56,189,248,0.04))',
+                            border: '1px solid rgba(14,165,233,0.3)',
+                            borderRadius: 16,
+                            padding: '20px',
+                            marginBottom: 24,
+                            textAlign: 'left',
+                            animation: 'fadeUp 0.5s 0.4s both',
+                            position: 'relative',
+                            overflow: 'hidden',
+                        }}>
+                            {/* Badge */}
+                            <div style={{
+                                position: 'absolute', top: 12, right: 12,
+                                background: 'rgba(16,185,129,0.15)',
+                                border: '1px solid rgba(16,185,129,0.3)',
+                                borderRadius: 20, padding: '2px 10px',
+                                fontSize: 11, color: '#10b981', fontWeight: 700,
+                            }}>SUPERUSER</div>
+
+                            <div style={{ fontSize: 12, color: '#38bdf8', marginBottom: 14, fontWeight: 700, letterSpacing: 0.5 }}>
+                                🔑 KREDENSIAL LOGIN — SIMPAN BAIK-BAIK
+                            </div>
+
+                            {/* Username Row */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center',
+                                justifyContent: 'space-between', marginBottom: 10,
+                                background: 'rgba(0,0,0,0.15)', borderRadius: 10,
+                                padding: '10px 14px',
+                            }}>
+                                <div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Username</div>
+                                    <code style={{ color: '#e2e8f0', fontSize: 15, fontWeight: 700 }}>
+                                        {generatedAccount.username}
+                                    </code>
+                                </div>
+                                <button
+                                    onClick={() => copyToClipboard(generatedAccount.username, 'user')}
+                                    title="Salin username"
+                                    style={{
+                                        background: copySuccess.user ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.08)',
+                                        border: '1px solid ' + (copySuccess.user ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.15)'),
+                                        borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
+                                        color: copySuccess.user ? '#10b981' : 'var(--text-muted)',
+                                        fontSize: 12, display: 'flex', alignItems: 'center', gap: 4,
+                                        transition: 'all 0.2s',
+                                    }}
+                                >
+                                    {copySuccess.user
+                                        ? <><CheckCircle size={13} /> Disalin</>
+                                        : <><Copy size={13} /> Salin</>
+                                    }
+                                </button>
+                            </div>
+
+                            {/* Password Row */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: 'rgba(0,0,0,0.15)', borderRadius: 10,
+                                padding: '10px 14px',
+                            }}>
+                                <div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Password</div>
+                                    <code style={{ color: '#e2e8f0', fontSize: 15, fontWeight: 700 }}>
+                                        {showPassword ? generatedAccount.password : '••••••'}
+                                    </code>
+                                </div>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                    <button
+                                        onClick={() => setShowPassword(p => !p)}
+                                        title={showPassword ? 'Sembunyikan' : 'Tampilkan'}
+                                        style={{
+                                            background: 'rgba(255,255,255,0.08)',
+                                            border: '1px solid rgba(255,255,255,0.15)',
+                                            borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
+                                            color: 'var(--text-muted)',
+                                            display: 'flex', alignItems: 'center',
+                                            transition: 'all 0.2s',
+                                        }}
+                                    >
+                                        {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+                                    </button>
+                                    <button
+                                        onClick={() => copyToClipboard(generatedAccount.password, 'pass')}
+                                        title="Salin password"
+                                        style={{
+                                            background: copySuccess.pass ? 'rgba(16,185,129,0.2)' : 'rgba(255,255,255,0.08)',
+                                            border: '1px solid ' + (copySuccess.pass ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.15)'),
+                                            borderRadius: 8, padding: '6px 10px', cursor: 'pointer',
+                                            color: copySuccess.pass ? '#10b981' : 'var(--text-muted)',
+                                            fontSize: 12, display: 'flex', alignItems: 'center', gap: 4,
+                                            transition: 'all 0.2s',
+                                        }}
+                                    >
+                                        {copySuccess.pass
+                                            ? <><CheckCircle size={13} /> Disalin</>
+                                            : <><Copy size={13} /> Salin</>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Warning simpan */}
+                            <div style={{
+                                marginTop: 12, padding: '8px 12px',
+                                background: 'rgba(251,191,36,0.08)',
+                                border: '1px solid rgba(251,191,36,0.25)',
+                                borderRadius: 8, fontSize: 11,
+                                color: '#fbbf24', lineHeight: 1.5,
+                            }}>
+                                ⚠️ Simpan kredensial ini sebelum melanjutkan. Password tidak dapat dipulihkan jika hilang.
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Error login */}
+                    {error && (
+                        <div style={{
+                            padding: '10px 14px', borderRadius: 10,
+                            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                            color: '#ef4444', fontSize: 13, marginBottom: 16,
+                            display: 'flex', alignItems: 'center', gap: 8,
+                        }}>
+                            <AlertCircle size={15} />{error}
+                        </div>
+                    )}
+
+                    {/* ── Tombol Login Sekarang ── */}
+                    <button
+                        id="btn-login-now"
+                        onClick={handleLoginNow}
+                        disabled={isLoggingIn}
+                        style={{
+                            width: '100%', fontSize: 16, padding: '15px',
+                            borderRadius: 14, border: 'none',
+                            background: isLoggingIn
+                                ? 'rgba(16,185,129,0.4)'
+                                : 'linear-gradient(135deg, #10b981, #059669)',
+                            color: 'white', fontWeight: 800, cursor: isLoggingIn ? 'wait' : 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                            boxShadow: '0 8px 24px rgba(16,185,129,0.35)',
+                            transition: 'all 0.2s',
+                            animation: 'fadeUp 0.5s 0.5s both',
+                        }}
+                    >
+                        {isLoggingIn
+                            ? <><Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Masuk ke Aplikasi...</>
+                            : <><LogIn size={18} /> Login & Masuk ke Aplikasi</>
+                        }
+                    </button>
+
+                    <style>{`
+                        @keyframes bounceIn {
+                            0%   { transform: scale(0.4); opacity: 0; }
+                            60%  { transform: scale(1.12); opacity: 1; }
+                            80%  { transform: scale(0.95); }
+                            100% { transform: scale(1); }
+                        }
+                        @keyframes fadeUp {
+                            from { opacity: 0; transform: translateY(16px); }
+                            to   { opacity: 1; transform: translateY(0); }
+                        }
+                        @keyframes spin {
+                            from { transform: rotate(0deg); }
+                            to   { transform: rotate(360deg); }
+                        }
+                    `}</style>
                 </div>
             </div>
         );
@@ -664,4 +873,10 @@ const ActivationPage = ({ onSuccess }) => {
     return null;
 };
 
-export default ActivationPage;
+const ActivationPageWithBoundary = (props) => (
+    <ActivationErrorBoundary>
+        <ActivationPage {...props} />
+    </ActivationErrorBoundary>
+);
+
+export default ActivationPageWithBoundary;

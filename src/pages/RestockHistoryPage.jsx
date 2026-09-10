@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { dbService } from '../services/DatabaseService';
-import { Search, X, Calendar, Package, ArrowUpCircle, Clock } from 'lucide-react';
+import { Search, X, Calendar, Package, ArrowUpCircle, Clock, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const RestockHistoryPage = () => {
     const [purchases, setPurchases] = useState([]);
@@ -19,6 +20,43 @@ const RestockHistoryPage = () => {
         (p.items && p.items.some(item => (item.name || '').toLowerCase().includes(searchTerm.toLowerCase()))) ||
         new Date(p.date).toLocaleDateString('id-ID').includes(searchTerm)
     );
+
+    const exportToExcel = () => {
+        const excelData = [];
+        filteredPurchases.forEach(p => {
+            const dateStr = new Date(p.date).toLocaleDateString('id-ID');
+            const timeStr = new Date(p.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            p.items.forEach((item, index) => {
+                excelData.push({
+                    'Tanggal': dateStr,
+                    'Waktu': timeStr,
+                    'Nama Barang': item.name,
+                    'Jumlah Restok': item.qty,
+                    'Harga Satuan (Rp)': item.cost || 0,
+                    'Total Harga Barang (Rp)': (item.qty * (item.cost || 0)),
+                    'Total Transaksi (Rp)': index === 0 ? p.total : ''
+                });
+            });
+        });
+
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        
+        // Auto adjust column width
+        const colWidths = [
+            { wch: 12 }, // Tanggal
+            { wch: 10 }, // Waktu
+            { wch: 30 }, // Nama Barang
+            { wch: 15 }, // Jumlah
+            { wch: 20 }, // Harga Satuan
+            { wch: 25 }, // Total Harga
+            { wch: 25 }  // Total Transaksi
+        ];
+        ws['!cols'] = colWidths;
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Riwayat Restok");
+        XLSX.writeFile(wb, `Laporan_Restok_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
+    };
 
     return (
         <div className="page-container">
@@ -39,9 +77,19 @@ const RestockHistoryPage = () => {
                             style={{ cursor: 'pointer', color: 'var(--text-muted)', marginRight: 12 }} />
                     )}
                 </div>
-                <div style={{ display: 'flex', gap: 8, color: 'var(--text-muted)', fontSize: 14, fontWeight: 600, alignItems: 'center' }}>
-                    <ArrowUpCircle size={20} className="text-primary" />
-                    <span>Total: {purchases.length} Riwayat</span>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 6, color: 'var(--text-muted)', fontSize: 14, fontWeight: 600, alignItems: 'center' }}>
+                        <ArrowUpCircle size={20} className="text-primary" />
+                        <span>Total: {filteredPurchases.length} Riwayat</span>
+                    </div>
+                    <button 
+                        className="btn" 
+                        onClick={exportToExcel}
+                        disabled={filteredPurchases.length === 0}
+                        style={{ background: 'var(--success-bg)', color: 'var(--success-text)', border: '1px solid var(--success-bg)', display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 12, fontSize: 13, fontWeight: 600 }}
+                    >
+                        <FileSpreadsheet size={16} /> Excel
+                    </button>
                 </div>
             </div>
 
